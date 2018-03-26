@@ -127,7 +127,9 @@ def mnist_tutorial(train_start=0, train_end=60000, test_start=0,
         adv_x = fgsm.generate(x, **fgsm_params)
         preds_adv = model.get_probs(adv_x)
 
-        pdb.set_trace()
+        #######################################################
+        # CLEMENT: The adv_x is a tensor that stores the advserial examples
+        #######################################################
 
         # Evaluate the accuracy of the MNIST model on adversarial examples
         eval_par = {'batch_size': batch_size}
