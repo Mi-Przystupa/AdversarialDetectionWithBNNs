@@ -1,3 +1,6 @@
 TFandEdExamples/log
 TFandEdExamples/checkpoints
 TFandEdExamples/MNIST-data
+TFandEdExamples/MNIST_data
+
+*.swp

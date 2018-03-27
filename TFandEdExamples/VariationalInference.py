@@ -22,8 +22,8 @@ from scipy.misc import imsave
 tf.flags.DEFINE_string("data_dir", default_value="/tmp/data", docstring="")
 tf.flags.DEFINE_string("out_dir", default_value="/tmp/out", docstring="")
 tf.flags.DEFINE_integer("M", default_value=128, docstring="Batch size during training.")
-tf.flags.DEFINE_integer("d", default_value=10, docstring="Latent dimension.")
-tf.flags.DEFINE_integer("n_epoch", default_value=100, docstring="")
+tf.flags.DEFINE_integer("d", default_value=784, docstring="Latent dimension.")
+tf.flags.DEFINE_integer("n_epoch", default_value=1, docstring="")
 
 FLAGS = tf.flags.FLAGS
 if not os.path.exists(FLAGS.out_dir):
@@ -102,11 +102,13 @@ def main(_):
   # MODEL
   z = Normal(loc=tf.zeros([FLAGS.M, FLAGS.d]),
              scale=tf.ones([FLAGS.M, FLAGS.d]))
-  logits = generative_network(z)
-  x = Bernoulli(logits=logits)
+  #logits = generative_network(z)
+  #x = Bernoulli(logits=logits)
+  x = Normal(loc=tf.zeros([FLAGS.M, FLAGS.d],dtype=tf.float32), \
+          scale=tf.ones([FLAGS.M, FLAGS.d],dtype=tf.float32 ))
 
   # INFERENCE
-  x_ph = tf.placeholder(tf.int32, [FLAGS.M, 28 * 28])
+  x_ph = tf.placeholder(tf.float32, [FLAGS.M, 28 * 28])
   loc, scale = inference_network(tf.cast(x_ph, tf.float32))
   qz = Normal(loc=loc, scale=scale)
 
@@ -115,7 +117,7 @@ def main(_):
   optimizer = tf.train.AdamOptimizer(0.01, epsilon=1.0)
   inference.initialize(optimizer=optimizer)
 
-  hidden_rep = tf.sigmoid(logits)
+  #hidden_rep = tf.sigmoid(logits)
 
   tf.global_variables_initializer().run()
 
@@ -138,10 +140,10 @@ def main(_):
     print("-log p(x) <= {:0.3f}".format(avg_loss))
 
     # Visualize hidden representations.
-    images = hidden_rep.eval()
-    for m in range(FLAGS.M):
-      imsave(os.path.join(FLAGS.out_dir, '%d.png') % m,
-             images[m].reshape(28, 28))
+    #images = hidden_rep.eval()
+    #for m in range(FLAGS.M):
+    #  imsave(os.path.join(FLAGS.out_dir, '%d.png') % m,
+    #         images[m].reshape(28, 28))
 
 if __name__ == "__main__":
   tf.app.run()
