@@ -55,13 +55,14 @@ X_test = mnist.test.images
 Y_test = np.argmax(mnist.test.labels, axis=1)
 
 print('hello')
-n_samples = 100
+n_samples = 20
 prob_lst = []
 samples = []
 w_samples = []
 b_samples = []
 
 for _ in range(n_samples):
+    print('hello again: {}'.format(_))
     w_samp = qw.sample()
     b_samp = qb.sample()
     w_samples.append(w_samp)
@@ -77,12 +78,13 @@ accy_test = []
 for prob in prob_lst:
     y_trn_prd = np.argmax(prob, axis=1).astype(np.float32)
     acc = (y_trn_prd == Y_test).mean()*100
-    acc_test.append(acc)
+    accy_test.append(acc)
 
-plt.hist(accy_test)
+plt.show(plt.hist(accy_test))
 plt.title("Histogram of prediction accuracies in the MNIST test data")
 plt.xlabel("Accuracy")
 plt.ylabel("Frequency")
+
 
 
 # compute mean probabilities for each class for all (W, b)
@@ -93,4 +95,43 @@ print("accuracy in predicting the test data = ", (Y_pred == Y_test).mean()*100)
 #create a pandas dataframe of posterior samples
 samples_df = pd.DataFrame(data = samples, index=range(n_samples))
 
-samples_5 = pd.DataFrame(data = samples_df[list(range(5))].values, columns=["W_0", "W_1", "W_2", "W_3"]
+samples_5 = pd.DataFrame(data = samples_df[list(range(5))].values, columns=["W_0", "W_1", "W_2", "W_3", "W_4"])
+
+#use seaborn pairgrid to make triale plot to show auto & cross correlations
+
+g = sns.PairGrid(samples_5, diag_sharey=False)
+g.map_lower(sns.kdeplot, n_levels = 4, cmap="Blues_d")
+g.map_upper(plt.scatter)
+g.map_diag(sns.kdeplot,legend=False)
+plt.subplots_adjust(top=0.95)
+plt.subplots_adjust(top=0.95)
+
+g.fig.suptitle('Joint posterior distribution of the first 5 weights')
+plt.show(g)
+
+#Load the first image from the test data and its label 
+
+test_image = X_test[0:1]
+test_label = Y_test[0]
+print('truth = ', test_label)
+pixels = test_image.reshape((28,28))
+plt.imshow(pixels,cmap='Blues')
+
+#Now check what the model predicts for each (w,b) sample from posterior
+
+sing_img_probs = []
+
+for w_samp, b_samp in zip(w_samples, b_samples):
+    prob = tf.nn.softmax(tf.maxmul(X_test[0:1], w_samp) + b_samp)
+    sing_img_probs.append(prob.eval())
+
+hist = plt.hist(np.argmax(sing_img_probs, axis=2), bins=range(10))
+plt.xticks(np.arange(0, 10))
+plt.xlim(0, 10)
+plt.xlabel("Accuracy of the prediction of the test digit")
+plt.ylabel("Frequency")
+
+plt.show(hist)
+
+
+# un familiar data
