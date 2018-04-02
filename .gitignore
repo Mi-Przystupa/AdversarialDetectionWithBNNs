@@ -3,4 +3,5 @@ TFandEdExamples/checkpoints
 TFandEdExamples/MNIST-data
 TFandEdExamples/MNIST_data
 
+*.pyc
 *.swp
