@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
-from edward.models import Categorical, Normal, Empirical
+from edward.models import Categorical, Normal
 import edward as ed
 import pandas as pd
 
@@ -52,33 +52,22 @@ h2 = tf.reshape(h2, [-1, num_filters*49])
 y = Categorical(tf.matmul(h2, w) + b)
 
 # the Q distribution
-T = 10000 
-qconv1 = Empirical(params=tf.Variable(tf.random_normal([T,3, 3, 1, num_filters]))) 
-qconv_b1 = Empirical(params=tf.Variable(tf.random_normal([T, num_filters])))
 
-qconv2 = Empirical(params=tf.Variable(tf.random_normal([T, 3, 3, num_filters, num_filters])))
-qconv_b2 = Empirical(params=tf.Variable(tf.random_normal([T, num_filters])))
+qconv1 = Normal(loc=tf.Variable(tf.random_normal([3, 3, 1, num_filters])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([3, 3, 1, num_filters]))))
+qconv_b1 = Normal(loc=tf.Variable(tf.random_normal([num_filters])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters]))))
 
-qw = Empirical(params=tf.Variable(tf.random_normal([T, num_filters* (D / 16), K])))
-qb = Empirical(params=tf.Variable(tf.random_normal([T, K])))
-
-
-
-#qconv1 = Normal(loc=tf.Variable(tf.random_normal([3, 3, 1, num_filters])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([3, 3, 1, num_filters]))))
-#qconv_b1 = Normal(loc=tf.Variable(tf.random_normal([num_filters])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters]))))
-
-#qconv2 = Normal(loc=tf.Variable(tf.random_normal([3, 3, num_filters, num_filters])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([3, 3, num_filters, num_filters]))))
-#qconv_b2 = Normal(loc=tf.Variable(tf.random_normal([num_filters])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters]))))
+qconv2 = Normal(loc=tf.Variable(tf.random_normal([3, 3, num_filters, num_filters])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([3, 3, num_filters, num_filters]))))
+qconv_b2 = Normal(loc=tf.Variable(tf.random_normal([num_filters])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters]))))
 
 
-#qw = Normal(loc=tf.Variable(tf.random_normal([num_filters* (D / 16), K])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters* (D / 16), K]))))
-#qb = Normal(loc=tf.Variable(tf.random_normal([K])),
-#        scale=tf.nn.softplus(tf.Variable(tf.random_normal([K]))))
+qw = Normal(loc=tf.Variable(tf.random_normal([num_filters* (D / 16), K])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([num_filters* (D / 16), K]))))
+qb = Normal(loc=tf.Variable(tf.random_normal([K])),
+        scale=tf.nn.softplus(tf.Variable(tf.random_normal([K]))))
 
 y_ph = tf.placeholder(tf.int32, [N])
 
@@ -86,7 +75,7 @@ y_ph = tf.placeholder(tf.int32, [N])
 inference = ed.SGHMC({conv1: qconv1, conv_b1: qconv_b1,conv2: qconv2, conv_b2: qconv_b2, w: qw,b: qb}, data={y: y_ph})
 
 
-inference.initialize(n_iter=10000, n_print=100, scale={y: float(mnist.train.num_examples) / N})
+inference.initialize(n_iter=1000000, n_print=100, scale={y: float(mnist.train.num_examples) / N})
 
 # use interactive session
 sess = tf.InteractiveSession()
