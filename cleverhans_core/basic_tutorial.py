@@ -49,14 +49,10 @@ def tutorial():
     batch_size = 128
 
     train_params = {
-        'nb_epochs': 1,
+        'nb_epochs': 6,
         'batch_size': batch_size,
         'learning_rate': 0.001
     }
-
-    fgsm_params = {'eps': 0.3,
-                   'clip_min': 0.,
-                   'clip_max': 1.}
 
     rng = np.random.RandomState([2017, 8, 30])
 
@@ -80,23 +76,35 @@ def tutorial():
     eval_params = {'batch_size': batch_size, 'adversarial': False}
     acc = model_eval(sess, x, y, preds, X_train, Y_train, args=eval_params)
 
-    # Initialize the Fast Gradient Sign Method (FGSM) attack object and
-    fgsm = FastGradientMethod(model, sess=sess)
-    adv_x = fgsm.generate(x, **fgsm_params)
-    preds_adv = model.get_probs(adv_x)
+    epsilons = [0.01, 0.05, 0.1, 0.3]
 
-    # Define adversarial examples placeholder
-    adv_examples = tf.placeholder(tf.float32, [None, 28, 28, 1])
+    for eps in epsilons:
 
-    # Evaluate the accuracy of the MNIST model on adversarial examples
-    eval_par = {'batch_size': batch_size, 'adversarial': True}
-    acc = model_eval(sess, x, y, preds_adv, X_test, Y_test, args=eval_par)
-    print('Test accuracy on adversarial examples: %0.4f\n' % acc)
-    report.clean_train_adv_eval = acc
+        fgsm_params = {'eps': eps,
+                   'clip_min': 0.,
+                   'clip_max': 1.}
 
-    # Write the adversarial examples to a file
-    np_examples = adv_x.eval(session=sess, feed_dict={x : X_train[0:1000]})
-    np.save("adv_examples", np_examples)
+        # Initialize the Fast Gradient Sign Method (FGSM) attack object and
+        fgsm = FastGradientMethod(model, sess=sess)
+        adv_x = fgsm.generate(x, **fgsm_params)
+        preds_adv = model.get_probs(adv_x)
+
+        # Define adversarial examples placeholder
+        adv_examples = tf.placeholder(tf.float32, [None, 28, 28, 1])
+
+        # Evaluate the accuracy of the MNIST model on adversarial examples
+        eval_par = {'batch_size': batch_size, 'adversarial': True}
+        acc = model_eval(sess, x, y, preds_adv, X_test, Y_test, args=eval_par)
+        print('Test accuracy on adversarial examples: %0.4f\n' % acc)
+        report.clean_train_adv_eval = acc
+
+        filename = "./examples/fgsm_mnist_adv_x_1000_" + str(eps)
+
+        # Write the adversarial examples to a file
+        np_examples = adv_x.eval(session=sess, feed_dict={x : X_train[0:1000]})
+        np.save(filename, np_examples)
+
+    np.save("./examples/fgsm_mnist_examples_y_1000", Y_train[0:1000])
 
 if __name__ == "__main__":
     tutorial()
