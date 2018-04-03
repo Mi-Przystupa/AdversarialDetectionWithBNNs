@@ -4,7 +4,7 @@ import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-from MNIST_Test.MNIST_Net import Net
+from MNIST_Net import Net
 
 # Hyper Parameters
 num_epochs = 10

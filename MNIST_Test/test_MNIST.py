@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
-from  MNIST_Test.MNIST_Net import Net
+from  MNIST_Net import Net
 from MNIST_Test import Uncertainty,generate_adversarials
 from PIL import Image
 
