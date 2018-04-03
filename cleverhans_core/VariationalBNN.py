@@ -22,6 +22,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 from edward.models import Categorical, Normal
 import edward as ed
 import pandas as pd
+import glob
 
 N = 100
 D = 784
@@ -30,6 +31,10 @@ H1 = 392
 H2 = 146
 H3 =  73
 K = 10
+
+adversaries = glob.glob('./examples/*_x_*')
+labels = glob.glob('./examples/*_y_*')
+
 layers = [D, K] #H1, H2, H3, K]
 
 def GetMNISTDataset():
@@ -38,7 +43,6 @@ def GetMNISTDataset():
 
 def BuildModelDynamic(x):
 
-    print('here I am look at me!')
     pq = {}
     q = []
     for i, value in enumerate(layers):
@@ -81,10 +85,8 @@ def Train(inference, dataset, x, y_ph):
 
 
 
-def Evaluation(dataset,layers,  n_samples=20, plot=False):
+def Evaluation(layers, X_test, Y_test,  n_samples=20, plot=False, title='Historgram of Accuracies'):
     
-    X_test = dataset.test.images
-    Y_test = np.argmax(dataset.test.labels,axis=1)
     prob_lst = [] 
     for _ in range(0, n_samples): 
         h = X_test
@@ -95,11 +97,11 @@ def Evaluation(dataset,layers,  n_samples=20, plot=False):
         prob = tf.nn.softmax(h)
         prob_lst.append(prob.eval())
     if plot:
-        PlotResults(prob_lst, Y_test)
+        PlotResults(prob_lst, Y_test, title)
 
     return prob_lst 
 
-def PlotResults(probs, Y_test):
+def PlotResults(probs, Y_test, title):
 
     acc_test =[]
     for prob in probs:
@@ -107,10 +109,12 @@ def PlotResults(probs, Y_test):
         acc = (y_trn_prd == Y_test).mean()* 100
         acc_test.append(acc)
 
+    plt.figure()
     plt.hist(acc_test)
     plt.title("Histogram of prediction accuracies in the MNIST test data")
     plt.xlabel("Accuracy")
     plt.ylabel("Frequency")
+    plt.title(title)
     plt.show()
 
 def main():
@@ -128,12 +132,21 @@ def main():
     tf.global_variables_initializer().run()
 
 
+    X_test = mnist.test.images
+    Y_test = np.argmax(mnist.test.labels,axis=1)
 
     #train the model
     Train(inference, mnist, x, y_ph)
 
     #measure it's perform
-    probs = Evaluation(mnist,q, plot=True) 
+    #probs = Evaluation(q,X_test, Y_test, plot=True) 
+
+    Y_test = np.load(labels[0])
+    Y_test = np.argmax(Y_test,axis=1)
+    for a in adversaries:
+        X_test = np.load(a)
+        X_test = np.reshape(X_test, (-1, D))
+        probs = Evaluation(q,X_test, Y_test, plot=True, title=a)
 
 if __name__ == "__main__":
     main()
