@@ -80,6 +80,7 @@ for prob in prob_lst:
     acc = (y_trn_prd == Y_test).mean()*100
     accy_test.append(acc)
 
+print(accy_test)
 plt.show(plt.hist(accy_test))
 plt.title("Histogram of prediction accuracies in the MNIST test data")
 plt.xlabel("Accuracy")

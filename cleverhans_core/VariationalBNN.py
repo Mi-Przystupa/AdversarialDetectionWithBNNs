@@ -30,7 +30,7 @@ H1 = 392
 H2 = 146
 H3 =  73
 K = 10
-layers = [D, H1, H2, H3, K]
+layers = [D, K] #H1, H2, H3, K]
 
 def GetMNISTDataset():
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True) 
@@ -48,7 +48,7 @@ def BuildModelDynamic(x):
         outputs = layers[i+1]
         w = Normal(tf.zeros([inputs, outputs]), scale=tf.ones(outputs))
         b = Normal(tf.zeros(outputs), scale=tf.ones(outputs))
-        x = tf.nn.relu(tf.matmul(x, w) + b)
+        x = tf.nn.tanh(tf.matmul(x, w) + b)
 
         qw = Normal(loc=tf.get_variable('loc/qw_'+str(i), [inputs,outputs]),
                 scale=tf.get_variable('scale/qw_' + str(i), [inputs, outputs]))
@@ -70,12 +70,16 @@ def Train(inference, dataset, x, y_ph):
 
     tf.global_variables_initializer().run()
 
+    variables = [v for v in tf.global_variables()]
+
     for _ in range(inference.n_iter):
         X_batch, Y_batch = dataset.train.next_batch(N)
 
         Y_batch = np.argmax(Y_batch, axis=1)
         info_dict = inference.update(feed_dict={x:X_batch, y_ph: Y_batch})
         inference.print_progress(info_dict)
+
+
 
 def Evaluation(dataset,layers,  n_samples=20, plot=False):
     
@@ -101,7 +105,7 @@ def PlotResults(probs, Y_test):
     for prob in probs:
         y_trn_prd = np.argmax(prob, axis=1).astype(np.float32)
         acc = (y_trn_prd == Y_test).mean()* 100
-        acc_test.append(acc_test)
+        acc_test.append(acc)
 
     plt.hist(acc_test)
     plt.title("Histogram of prediction accuracies in the MNIST test data")
@@ -114,11 +118,16 @@ def main():
     mnist = GetMNISTDataset()
     x = tf.placeholder(tf.float32,[None, D], name='input')
 
+    
     inference, y_ph, y, q  = BuildModelDynamic(x) 
     variables = [v for v in tf.global_variables()]
     for v in variables:
         print(v.name)
-    inference.initialize(n_iter=10000, n_print=100, scale={y: float(mnist.train.num_examples) / N})
+    inference.initialize(n_iter=5000, n_print=100, scale={y: float(mnist.train.num_examples) / N})
+    sess = tf.InteractiveSession()
+    tf.global_variables_initializer().run()
+
+
 
     #train the model
     Train(inference, mnist, x, y_ph)
