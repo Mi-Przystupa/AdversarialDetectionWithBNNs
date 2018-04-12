@@ -14,6 +14,7 @@ from six.moves import xrange
 import tensorflow as tf
 from tensorflow.python.platform import flags
 import logging
+import pdb
 
 from cleverhans.attacks import SaliencyMapMethod
 from cleverhans.utils import other_classes, set_log_level
@@ -27,7 +28,7 @@ FLAGS = flags.FLAGS
 
 
 def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
-                        test_end=10000, viz_enabled=True, nb_epochs=6,
+                        test_end=10000, viz_enabled=True, nb_epochs=1,
                         batch_size=128, nb_classes=10, source_samples=10,
                         learning_rate=0.001):
     """
@@ -104,6 +105,10 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     print('Crafting ' + str(source_samples) + ' * ' + str(nb_classes - 1) +
           ' adversarial examples')
 
+    num_examples = source_samples * nb_classes
+    all_examples = np.zeros((num_examples, 28, 28, 1))
+    all_labels = np.zeros((num_examples, 10))
+
     # Keep track of success (adversarial example classified in target)
     results = np.zeros((nb_classes, source_samples), dtype='i')
 
@@ -123,6 +128,8 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     figure = None
     # Loop over the samples we want to perturb into adversarial examples
     for sample_ind in xrange(0, source_samples):
+        
+        cc = 0
         print('--------------------------------------')
         print('Attacking input %i/%i' % (sample_ind + 1, source_samples))
         sample = X_test[sample_ind:(sample_ind + 1)]
@@ -138,6 +145,7 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
 
         # Loop over all target classes
         for target in target_classes:
+            
             print('Generating adv. example for target class %i' % target)
 
             # This call runs the Jacobian-based saliency map approach
@@ -160,6 +168,10 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
                 figure = pair_visual(
                     np.reshape(sample, (img_rows, img_cols)),
                     np.reshape(adv_x, (img_rows, img_cols)), figure)
+
+            all_examples[sample_ind * 10 + cc] = adv_x
+            all_labels[sample_ind * 10 + cc] = Y_test[sample_ind:(sample_ind + 1)]
+            cc = cc + 1
 
             # Add our adversarial example to our grid data
             grid_viz_data[target, current_class, :, :, :] = np.reshape(
@@ -186,6 +198,14 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     print('Avg. rate of perturbed features for successful '
           'adversarial examples {0:.4f}'.format(percent_perturb_succ))
 
+    filename = "./examples/jsma_mnist_adv_x_100"
+
+    # Write the adversarial examples to a file
+    np.save(filename, all_examples)
+
+    # Write the adv labels to a file
+    np.save("./examples/jsma_mnist_y_100", all_labels)
+
     # Close TF session
     sess.close()
 
@@ -193,7 +213,7 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     if viz_enabled:
         import matplotlib.pyplot as plt
         plt.close(figure)
-        # _ = grid_visual(grid_viz_data)
+        grid_visual(grid_viz_data)
 
     return report
 
