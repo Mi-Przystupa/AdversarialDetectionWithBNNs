@@ -1,13 +1,12 @@
 import numpy as np
 import torch
+import pdb
 import torch.nn as nn
 from torch.autograd import Variable
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 from  MNIST_Net import Net
 from MNIST_Test import Uncertainty,generate_adversarials
-from PIL import Image
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,10 +15,12 @@ from scipy.stats import gaussian_kde
 #hyper parameters
 T=100
 
+
+# Pass in the 28x28x1 tensor for the image
 def show_Image(image_data):
-    img = Image.fromarray(image_data,mode='L')
-    img.save('my.png')
-    img.show()
+    plt.imshow(image_data[:,:,0], cmap='gray')
+    plt.show()
+
 def remove_nan_values(adv_predictions):
     new_adv_predictions=np.copy(adv_predictions)
     for i in range(adv_predictions.shape[0]):
@@ -168,18 +169,13 @@ def get_testset_predictions():
     plt.show()
 
 
-
-
-
-
-
 if __name__ == '__main__':
+    
     # load the Trained model
     cnn = Net()
     print('start loading model')
     cnn.load_state_dict(torch.load('cnn.pkl'))
     print('end loading model')
-
 
     #######################################
     ##########  TEST on FGSM ##############
