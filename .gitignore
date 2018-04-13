@@ -3,5 +3,6 @@ TFandEdExamples/checkpoints
 TFandEdExamples/MNIST-data
 TFandEdExamples/MNIST_data
 
+cleverhans_core/images
 *.pyc
 *.swp
