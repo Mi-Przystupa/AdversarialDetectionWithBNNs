@@ -3,5 +3,8 @@ TFandEdExamples/checkpoints
 TFandEdExamples/MNIST-data
 TFandEdExamples/MNIST_data
 
+./VariationalBNN/log/*
 *.pyc
 *.swp
+
+
