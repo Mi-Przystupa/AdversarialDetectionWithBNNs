@@ -4,6 +4,7 @@ TFandEdExamples/MNIST-data
 TFandEdExamples/MNIST_data
 
 ./VariationalBNN/log/*
+cleverhans_core/images
 *.pyc
 *.swp
 

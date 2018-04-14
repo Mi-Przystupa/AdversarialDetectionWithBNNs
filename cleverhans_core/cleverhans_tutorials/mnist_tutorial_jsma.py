@@ -101,7 +101,7 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     ###########################################################################
     # Craft adversarial examples using the Jacobian-based saliency map approach
     ###########################################################################
-    print('Crafting ' + str(source_samples) + ' * ' + str(nb_classes-1) +
+    print('Crafting ' + str(source_samples) + ' * ' + str(nb_classes - 1) +
           ' adversarial examples')
 
     # Keep track of success (adversarial example classified in target)
@@ -125,7 +125,7 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     for sample_ind in xrange(0, source_samples):
         print('--------------------------------------')
         print('Attacking input %i/%i' % (sample_ind + 1, source_samples))
-        sample = X_test[sample_ind:(sample_ind+1)]
+        sample = X_test[sample_ind:(sample_ind + 1)]
 
         # We want to find an adversarial example for each possible target class
         # (i.e. all classes that differ from the label given in the dataset)
@@ -193,7 +193,7 @@ def mnist_tutorial_jsma(train_start=0, train_end=60000, test_start=0,
     if viz_enabled:
         import matplotlib.pyplot as plt
         plt.close(figure)
-        _ = grid_visual(grid_viz_data)
+        # _ = grid_visual(grid_viz_data)
 
     return report
 
