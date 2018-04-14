@@ -6,14 +6,14 @@ import numpy as np
 import sys
 sys.path.append('PBP_net/')
 import PBP_net
-from  tensorflow.examples.tutorials.mnist import input_data
+#from  tensorflow.examples.tutorials.mnist import input_data
 
 np.random.seed(1)
 
 # We load the boston housing dataset
 
-#data = np.loadtxt('boston_housing.txt')
-mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
+data = np.loadtxt('boston_housing.txt')
+#mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
 
 # We obtain the features and the targets
 
