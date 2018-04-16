@@ -4,6 +4,7 @@
 
 import torch
 import torch.nn as nn
+import torch.utils as utils
 from torch.autograd import Variable
 import numpy as np
 
@@ -11,7 +12,7 @@ from sklearn.datasets import fetch_mldata
 from sklearn.cross_validation import train_test_split
 from sklearn import preprocessing
 #from tensorflow.examples.tutorials.mnist import input_data
-from torchvision import datasets
+from torchvision import datasets, transforms
 from torchviz import make_dot, make_dot_from_trace
 
 
@@ -53,8 +54,8 @@ class MLPLayer(nn.Module):
     def forward(self, X, infer=False):
         if infer:
             epsilon_W, epsilon_b = self.get_random()
-            #W = torch.normal(self.W_mu, self.W_logsigma)
-            #b = torch.normal(self.b_mu, self.b_logsigma)
+#            W = torch.normal(self.W_mu, self.W_logsigma) # torch.log(1 + torch.exp(self.W_logsigma)) )
+#            b = torch.normal(self.b_mu, self.b_logsigma) #torch.log(1 + torch.exp(self.b_logsigma)) )
             W = self.W_mu + torch.log(1 + torch.exp(self.W_logsigma)) * epsilon_W
             b = self.b_mu + torch.log(1 + torch.exp(self.b_logsigma)) * epsilon_b
             #output = torch.mm(X, self.W_mu) + self.b_mu.expand(X.size()[0], self.n_output)
@@ -125,8 +126,8 @@ class mnist:
         self.data = torch.cat((traindata, testdata))
         self.target = torch.cat((trainlabel, testlabel))
 mnist = mnist()
+'''
 N = 5000
-
 data = np.float32(mnist.data[:]) / 255.
 idx = np.random.choice(data.shape[0], N)
 data = data[idx]
@@ -137,9 +138,21 @@ train_data, test_data = data[train_idx], data[test_idx]
 train_target, test_target = target[train_idx], target[test_idx]
 
 train_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(train_target))
+'''
+train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
+test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
 
-n_input = train_data.shape[1]
-M = train_data.shape[0]
+train_target = train.train_labels.unsqueeze(1).numpy()
+test_target = test.test_labels.unsqueeze(1).numpy()
+train_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(train_target))
+test_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(test_target))
+
+train.train_labels = torch.from_numpy(train_target)
+#test.test_labels = torch.from_numpy(test_target)
+
+
+n_input = 28 * 28
+M = train.train_data.size()[0]
 sigma_prior = float(np.exp(-3))
 n_samples = 3
 learning_rate = 0.0001
@@ -157,14 +170,18 @@ batch_size = 100
 n_batches = M / float(batch_size)
 optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
-n_train_batches = int(train_data.shape[0] / float(batch_size))
+train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True,
+        )
+
+n_train_batches = int(train.train_labels.size()[0] / float(batch_size))
+
 
 for e in xrange(n_epochs):
     errs = []
-    for b in range(n_train_batches):
+    for b in train_loader:
         net.zero_grad()
-        X = Variable(torch.Tensor(train_data[b * batch_size: (b+1) * batch_size]).cuda())
-        y = Variable(torch.Tensor(train_target[b * batch_size: (b+1) * batch_size]).cuda())
+        X = Variable(b[0].view(-1, 28 * 28).float().cuda())
+        y = Variable(b[1].cuda())
         #technically you're supposed to get n number of samples for each update...
         #so secretly there should be aloop around this where we calc the forward pas smultipel times
         log_pw, log_qw, log_likelihood = forward_pass_samples(X, y)
@@ -176,12 +193,12 @@ for e in xrange(n_epochs):
         loss.backward()
         optimizer.step()
 
-    X = Variable(torch.Tensor(test_data).cuda(), volatile=True)
+    X = Variable(test.test_data.view(-1, 28 * 28).float().cuda(), volatile=True)
     accs = []
     for t in range(0, 10):
         pred = net(X, infer=True)
         _, out = torch.max(pred, 1)
-        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test_target.ravel())) / float(test_data.shape[0])
+        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test.test_labels.numpy().ravel())) / float(test.test_labels.size()[0])
         accs.append(acc)
     accs = np.array(accs)
 
@@ -191,7 +208,7 @@ accs = []
 for y in range(0, 50):
     pred = net(X,infer=True)
     _, out = torch.max(pred, 1)
-    acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test_target.ravel())) / float(test_data.shape[0])
+    acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test_target.ravel())) / float(test.test_labels.size()[0])
     accs.append(acc)
     print 'acc', acc
 
