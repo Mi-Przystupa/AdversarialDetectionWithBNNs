@@ -175,6 +175,9 @@ train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True,
 
 n_train_batches = int(train.train_labels.size()[0] / float(batch_size))
 
+print(net)
+#print(net.l1)
+#print(net.l2)
 
 for e in xrange(n_epochs):
     errs = []
@@ -188,9 +191,14 @@ for e in xrange(n_epochs):
         #then we sum of thr esults in the criteron and do that business
         #F(D, theta)  = 1/n_batch (log_qw - log_pw) - logP(D | w), P(D|w) - softmax I believe...
         loss = criterion(log_pw, log_qw, log_likelihood)
-        make_dot(loss, params=dict(net.named_parameters()))
+
+        #make_dot(loss, params=dict(net.named_parameters()))
         errs.append(loss.data.cpu().numpy())
         loss.backward()
+        print('model')
+        for named, p in net.named_parameters():
+            print(named)
+            print(p.grad)
         optimizer.step()
 
     X = Variable(test.test_data.view(-1, 28 * 28).float().cuda(), volatile=True)
