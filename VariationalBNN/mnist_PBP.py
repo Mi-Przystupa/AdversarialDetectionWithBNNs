@@ -1,3 +1,5 @@
+import os
+os.environ["MKL_THREADING_LAYER"] = "GNU"
 
 import math
 
@@ -6,14 +8,14 @@ import numpy as np
 import sys
 sys.path.append('PBP_net/')
 import PBP_net
-#from  tensorflow.examples.tutorials.mnist import input_data
+from  tensorflow.examples.tutorials.mnist import input_data
 
 np.random.seed(1)
 
 # We load the boston housing dataset
 
 data = np.loadtxt('boston_housing.txt')
-#mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
+mnist = input_data.read_data_sets("MNIST_data/", one_hot=False)
 
 # We obtain the features and the targets
 
@@ -33,7 +35,7 @@ y_test = mnist.test.labels
 
 n_hidden_units = 50
 net = PBP_net.PBP_net(X_train, y_train,
-    [ n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 40)
+    [ n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 1)
 
 # We make predictions for the test set
 

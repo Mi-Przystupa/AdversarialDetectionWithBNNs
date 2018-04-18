@@ -1,3 +1,5 @@
+import os
+os.environ["MKL_THREADING_LAYER"] = "GNU"
 
 import math
 
@@ -26,14 +28,16 @@ size_train = int(np.round(X.shape[ 0 ] * 0.9))
 index_train = permutation[ 0 : size_train ]
 index_test = permutation[ size_train : ]
 
-X_train = X[ index_train, : ]
-y_train = y[ index_train ]
-X_test = X[ index_test, : ]
-y_test = y[ index_test ]
+X_train = X[ index_train, : ].astype(np.float32)
+y_train = y[ index_train ].astype(np.float32)
+X_test = X[ index_test, : ].astype(np.float32)
+y_test = y[ index_test ].astype(np.float32)
 
 # We construct the network with one hidden layer with two-hidden layers
 # with 50 neurons in each one and normalizing the training features to have
 # zero mean and unit standard deviation in the trainig set.
+
+print(X_train.dtype)
 
 n_hidden_units = 50
 net = PBP_net.PBP_net(X_train, y_train,
