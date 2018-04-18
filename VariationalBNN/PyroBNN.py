@@ -11,9 +11,9 @@ from pyro.optim import Adam
 
 from sklearn import preprocessing
 from torchvision import datasets, transforms
-
+import time
 p = 28 * 28
-hidden = 200
+hidden = 1200
 outputs = 10
 
 class BNN(nn.Module):
@@ -33,11 +33,16 @@ class BNN(nn.Module):
 
 
 bnn = BNN(p, 10, hidden=hidden)
-bnn = bnn
+bnn = bnn.cuda()
 
 #for p in bnn.named_parameters():
 #    print(p[0])
 #    print(p[1].data.shape())
+mu1, sigma1 = Variable(torch.zeros(hidden, p).cuda()), Variable(10 * torch.ones(hidden, p).cuda())
+bias_mu1, bias_sigma1 = Variable(torch.zeros(hidden).cuda()), Variable(10 * torch.ones(hidden).cuda())
+mu2, sigma2 = Variable(torch.zeros(outputs, hidden).cuda()), Variable(10 * torch.ones(outputs, hidden).cuda())
+bias_mu2, bias_sigma2 = Variable(torch.zeros(outputs).cuda()), Variable(10 * torch.ones(outputs).cuda())
+
 def model(data):
     x_data = data[0]
     y_data = data[1]
@@ -48,10 +53,6 @@ def model(data):
     w_prior, b_prior = Normal(mu, sigma), Normal(bias_mu, bias_sigma)
     priors = {'linear.weight': w_prior, 'linear.bias': b_prior}
     '''
-    mu1, sigma1 = Variable(torch.zeros(hidden, p)), Variable(10 * torch.ones(hidden, p))
-    bias_mu1, bias_sigma1 = Variable(torch.zeros(hidden)), Variable(10 * torch.ones(hidden))
-    mu2, sigma2 = Variable(torch.zeros(outputs, hidden)), Variable(10 * torch.ones(outputs, hidden))
-    bias_mu2, bias_sigma2 = Variable(torch.zeros(outputs)), Variable(10 * torch.ones(outputs))
 
     w_prior1, b_prior1 = Normal(mu1, sigma1), Normal(bias_mu1, bias_sigma1)
     w_prior2, b_prior2 = Normal(mu2, sigma2), Normal(bias_mu2, bias_sigma2)
@@ -67,6 +68,17 @@ def model(data):
 
 
 softplus = torch.nn.Softplus()
+
+w_mu1 = Variable(torch.randn(hidden, p).cuda(), requires_grad=True)
+w_log_sig1 = Variable(-3.0 * torch.ones(hidden, p).cuda() + 0.05 * torch.randn(hidden, p).cuda(), requires_grad=True)
+b_mu1 = Variable(torch.randn(hidden).cuda(), requires_grad=True)
+b_log_sig1 = Variable(-3.0 * torch.ones(hidden).cuda() + 0.05 * torch.randn(hidden).cuda(),
+                     requires_grad=True)
+w_mu2 = Variable(torch.randn(outputs, hidden).cuda(), requires_grad=True)
+w_log_sig2 = Variable(-3.0 * torch.ones(outputs, hidden).cuda() + 0.05 * torch.randn(outputs, hidden).cuda(), requires_grad=True)
+b_mu2 = Variable(torch.randn(outputs).cuda(), requires_grad=True)
+b_log_sig2 = Variable(-3.0 * torch.ones(outputs).cuda() + 0.05 * torch.randn(outputs).cuda(),
+                     requires_grad=True)
 
 
 def guide(data):
@@ -87,16 +99,6 @@ def guide(data):
     w_dist, b_dist = Normal(mw_param, sw_param), Normal(mb_param, sb_param)
     dists = {'linear.weight': w_dist, 'linear.bias': b_dist}
     '''
-    w_mu1 = Variable(torch.randn(hidden, p), requires_grad=True)
-    w_log_sig1 = Variable(-3.0 * torch.ones(hidden, p) + 0.05 * torch.randn(hidden, p), requires_grad=True)
-    b_mu1 = Variable(torch.randn(hidden), requires_grad=True)
-    b_log_sig1 = Variable(-3.0 * torch.ones(hidden) + 0.05 * torch.randn(hidden),
-                         requires_grad=True)
-    w_mu2 = Variable(torch.randn(outputs, hidden), requires_grad=True)
-    w_log_sig2 = Variable(-3.0 * torch.ones(outputs, hidden) + 0.05 * torch.randn(outputs, hidden), requires_grad=True)
-    b_mu2 = Variable(torch.randn(outputs), requires_grad=True)
-    b_log_sig2 = Variable(-3.0 * torch.ones(outputs) + 0.05 * torch.randn(outputs),
-                         requires_grad=True)
 
 
     #register learnable param in the param store
@@ -119,6 +121,7 @@ def guide(data):
 
 
 train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
+#train.train_data = train.train_data.cuda()
 test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
 
 train_target = train.train_labels.unsqueeze(1).numpy()
@@ -126,7 +129,7 @@ test_target = test.test_labels.unsqueeze(1).numpy()
 train_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(train_target))
 test_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(test_target))
 
-train.train_labels = torch.from_numpy(train_target)
+train.train_labels = torch.from_numpy(train_target)#.cuda()
 #test.test_labels = torch.from_numpy(test_target)
 
 
@@ -137,13 +140,13 @@ n_samples = 3
 learning_rate = 0.0001
 n_epochs = 10 # 50 # 100
 
-batch_size = 100
+batch_size = 256
 n_batches = M / float(batch_size)
 
 
 optim = Adam({"lr": 0.0001})
 svi = SVI(model, guide, optim, loss="ELBO")
-train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
+train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 n_train_batches = int(train.train_labels.size()[0] / float(batch_size))
 
 
@@ -151,11 +154,12 @@ def main():
     pyro.clear_param_store()
     for j in range(n_epochs):
         loss = 0
-
+        start = time.time()
         for data in train_loader:
-            data[0] = Variable(data[0].view(-1, 28 * 28))
-            data[1] = Variable(data[1].long())
+            data[0] = Variable(data[0].view(-1, 28 * 28).cuda())
+            data[1] = Variable(data[1].long().cuda())
             loss += svi.step(data)
+        print(time.time() - start)
         #if j % 100 == 0:
         print("[iteration %04d] loss: %.4f" % (j + 1, loss / float(n_train_batches * batch_size)))
     #for name in pyro.get_param_store().get_all_param_names():
@@ -166,7 +170,7 @@ def main():
     print(X)
     print(y)
 
-    x_data, y_data = Variable(X.float()), Variable(y)
+    x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
     accs = []
     for i in range(20):
 
@@ -174,7 +178,7 @@ def main():
 
         pred = sampled_reg_model(x_data)
         _, out = torch.max(pred, 1)
-        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.numpy().ravel())) / float(test.test_labels.size()[0])
+        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(test.test_labels.size()[0])
         accs.append(acc)
         print(acc)
     accs = np.array(accs)
