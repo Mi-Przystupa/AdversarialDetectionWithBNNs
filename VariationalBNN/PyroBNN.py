@@ -13,6 +13,7 @@ from sklearn import preprocessing
 from torchvision import datasets, transforms
 import time
 import Uncertainty
+import glob
 p = 28 * 28
 hidden = 1200
 outputs = 10
@@ -160,9 +161,9 @@ M = train.train_data.size()[0]
 n_samples = 3
 
 learning_rate = 0.0001
-n_epochs = 1 # 50 # 100
+n_epochs = 120 # 50 # 100
 
-batch_size = 256
+batch_size = 256 * 2
 n_batches = M / float(batch_size)
 
 
@@ -186,45 +187,69 @@ def main():
         print("[iteration %04d] loss: %.4f" % (j + 1, loss / float(n_train_batches * batch_size)))
     #for name in pyro.get_param_store().get_all_param_names():
     #    print("[%s]: %.3f" % (name, pyro.param(name).data.numpy()))
+    datasets = {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
-    data = [test.test_data, test.test_labels]
-    X, y = data[0].view(-1, 28 * 28), data[1]
+    fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+    fgsm_labels  = torch.from_numpy(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'))
+    for file in fgsm:
+        parts = file.split('_')
+        key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
-    x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
-    accs = []
-    T = 100
-    samples = np.zeros((y_data.data.size()[0], T, outputs))
-    for i in range(T):
-        sampled_model = guide(None)
-        pred = sampled_model(x_data)
-        samples[:, i, :] = pred.data.cpu().numpy()
-        _, out = torch.max(pred, 1)
-        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(test.test_labels.size()[0])
-        accs.append(acc)
+        datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
-    variationRatio = []
-    mutualInformation = []
-    predictiveEntropy = []
-    predictions = []
+    jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+    jsma_labels = torch.from_numpy(np.load('jsma/jsma_mnist_adv_y_10000.npy'))
+    for file in jsma:
+        parts = file.split('_')
+        key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
-    for i in range(0, len(y_data)):
-        entry = samples[i, :, :]
-        variationRatio.append(Uncertainty.variation_ratio(entry))
-        mutualInformation.append(Uncertainty.mutual_information(entry))
-        predictiveEntropy.append(Uncertainty.predictive_entropy(entry))
-        predictions.append(np.max(entry.mean(axis=0), axis=0))
+        datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+    print(datasets.keys())
+    print('################################################################################')
+    for key, value in datasets.iteritems():
+        print(key)
+        parts = key.split('_')
+        adversary_type = parts[0]
+        epsilon = parts[1]
+        print(epsilon)
+        data = value
+        X, y = data[0].view(-1, 28 * 28), data[1]
+        x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
+        T = 100
+
+        accs = []
+        samples = np.zeros((y_data.data.size()[0], T, outputs))
+        for i in range(T):
+            sampled_model = guide(None)
+            pred = sampled_model(x_data)
+            samples[:, i, :] = pred.data.cpu().numpy()
+            _, out = torch.max(pred, 1)
+            acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(test.test_labels.size()[0])
+            accs.append(acc)
+
+        variationRatio = []
+        mutualInformation = []
+        predictiveEntropy = []
+        predictions = []
+
+        for i in range(0, len(y_data)):
+            entry = samples[i, :, :]
+            variationRatio.append(Uncertainty.variation_ratio(entry))
+            mutualInformation.append(Uncertainty.mutual_information(entry))
+            predictiveEntropy.append(Uncertainty.predictive_entropy(entry))
+            predictions.append(np.max(entry.mean(axis=0), axis=0))
 
 
-    uncertainty={}
-    uncertainty['varation_ratio']= np.array(variationRatio)
-    uncertainty['predictive_entropy']= np.array(predictiveEntropy)
-    uncertainty['mutual_information']= np.array(mutualInformation)
-    predictions = np.array(predictions)
+        uncertainty={}
+        uncertainty['varation_ratio']= np.array(variationRatio)
+        uncertainty['predictive_entropy']= np.array(predictiveEntropy)
+        uncertainty['mutual_information']= np.array(mutualInformation)
+        predictions = np.array(predictions)
 
-    Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type='Regular Images',epsilon=0.0)
+        Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon))
 
-    accs = np.array(accs)
-    print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
+        accs = np.array(accs)
+        print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
 
 
     #print( "Loss: ", loss(y_preds, y_data.long()).data[0])

@@ -58,7 +58,8 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('variation ratio uncertainty for MNIST adversarial, adversarial_type= %s,epsilon=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('variation ratio')
-    plt.show()
+    fig.savefig('Results/VariationRatio' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    #plt.show()
 
 
     ######################################
@@ -77,7 +78,8 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('mutual information for MNIST adversarial, adversarial_type= %s,epsilon=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('mutual information')
-    plt.show()
+    fig.savefig('Results/MutualInformation' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    #plt.show()
 
 
 
@@ -97,6 +99,7 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('predictive entropy for MNIST adversarial,adversarial_type= %s,epsilon=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('predictive entropy')
-    plt.show()
+    fig.savefig('Results/PredictedEntropy' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    #plt.show()
 
 
