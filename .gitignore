@@ -4,7 +4,15 @@ TFandEdExamples/MNIST-data
 TFandEdExamples/MNIST_data
 
 ./VariationalBNN/log/*
+VariationalBNN/data/*
+VariationalBNN/dataTest/*
+VariationalBNN/fgsm
+VariationalBNN/jsma
+cleverhans_core/MNIST_data/
+cleverhans_core/examples/*.npy
 cleverhans_core/images
+
+
 *.pyc
 *.swp
 

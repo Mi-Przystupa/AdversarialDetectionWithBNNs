@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import stats
 from scipy.stats import gaussian_kde
-
+import matplotlib.pyplot as plt
 import math
 
 def variation_ratio(predicted_probs):
@@ -10,10 +10,6 @@ def variation_ratio(predicted_probs):
     mode_class=stats.mode(max_predictions)[0][0]
     f_x=len((np.where(max_predictions==mode_class))[0])
     var_ratio=1-(f_x/T)
-    if np.isnan(var_ratio):
-        print('hi')
-    if math.isnan(var_ratio):
-        print('hi')
     return var_ratio
 
 def predictive_entropy(predicted_probs):
@@ -56,7 +52,7 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     y = variation_ratios[idx]
     z = z[idx]
     
-    fig, ax = plt.subplots()
+    fig, ax =  plt.subplots()
     sc = ax.scatter(x, y, c=z, s=50, edgecolor='', cmap=plt.cm.jet)
     plt.colorbar(sc)
     plt.title('variation ratio uncertainty for MNIST adversarial, adversarial_type= %s,epsilon=%f'%((adversarial_type,epsilon)))
