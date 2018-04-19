@@ -9,7 +9,7 @@ VariationalBNN/dataTest/*
 VariationalBNN/fgsm
 VariationalBNN/jsma
 cleverhans_core/MNIST_data/
-cleverhans_core/examples/*.npy
+cleverhans_core/examples/*
 cleverhans_core/images
 
 

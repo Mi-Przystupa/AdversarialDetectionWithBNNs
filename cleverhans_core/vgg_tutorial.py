@@ -93,6 +93,9 @@ def generate_images():
     # Get CIFAR10 test data
     X_train, Y_train, X_test, Y_test = data_cifar10()
 
+    # Save the vgg labels
+    np.save("vgg_adv_y_10000", Y_test)
+
     assert Y_train.shape[1] == 10.
     label_smooth = .1
     Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
@@ -101,7 +104,6 @@ def generate_images():
     y = tf.placeholder(tf.float32, shape=(None, 10))
 
     # Load model
-    args_model = 'vgg6'
     args_load = 'cifar10vgg.h5'
     args_pool = 0.05
     args_attack = 'fgsm'
@@ -132,26 +134,30 @@ def generate_images():
     # }
 
     im_base = '/im_'
-    model_name = args_model + '_p' + str(args_pool)
     if args_attack == 'fgsm' or args_attack == 'FGSM':
 
         result_dir = os.getcwd() + '/images/fgsm/'
         print "==> creating fgsm adversarial wrapper"
 
-        pdb.set_trace()
-        adv_x = fgsm_old(x, predictions, eps=0.05)
+        epsilons = [0.01, 0.03, 0.07, 0.1, 0.2, 0.3]
 
-        print "==> sending to batch evaluator to finalize adversarial images"
-        eval_params = {'batch_size': FLAGS.batch_size}
-        X_train_adv, = batch_eval(sess, [x], [adv_x], [X_train], args=eval_params)
+        for eps in epsilons:
 
-        i = 0
-        if not os.path.exists(result_dir + model_name):
-            os.makedirs(result_dir + model_name)
-        print "==> saving images to {}".format(result_dir + model_name)
-        for ad in X_train_adv:
-            scipy.misc.imsave(result_dir + model_name + im_base + str(i) + '.png', ad)
-            i += 1
+            model_name = "vgg_fgsm_" + str(eps)
+
+            adv_x = fgsm_old(x, predictions, eps=eps)
+
+            print "==> sending to batch evaluator to finalize adversarial images"
+            eval_params = {'batch_size': FLAGS.batch_size}
+            X_test_adv, = batch_eval(sess, [x], [adv_x], [X_test], args=eval_params)
+
+            i = 0
+            if not os.path.exists(result_dir + model_name):
+                os.makedirs(result_dir + model_name)
+            print "==> saving images to {}".format(result_dir + model_name)
+            for ad in X_test_adv:
+                scipy.misc.imsave(result_dir + model_name + im_base + str(i) + '.png', ad)
+                i += 1
 
         sess.close()
 

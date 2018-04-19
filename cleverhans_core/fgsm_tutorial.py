@@ -76,7 +76,7 @@ def tutorial():
     eval_params = {'batch_size': batch_size, 'adversarial': False}
     acc = model_eval(sess, x, y, preds, X_train, Y_train, args=eval_params)
 
-    epsilons = [0.01, 0.05, 0.1, 0.3]
+    epsilons = [0.01, 0.03, 0.07, 0.1, 0.2, 0.3]
 
     for eps in epsilons:
 
@@ -101,10 +101,10 @@ def tutorial():
         filename = "./examples/fgsm_mnist_adv_x_1000_" + str(eps)
 
         # Write the adversarial examples to a file
-        np_examples = adv_x.eval(session=sess, feed_dict={x : X_train[0:1000]})
+        np_examples = adv_x.eval(session=sess, feed_dict={x : X_test})
         np.save(filename, np_examples)
 
-    np.save("./examples/fgsm_mnist_examples_y_1000", Y_train[0:1000])
+    np.save("./examples/fgsm_mnist_adv_y_1000", Y_test)
 
 if __name__ == "__main__":
     tutorial()
