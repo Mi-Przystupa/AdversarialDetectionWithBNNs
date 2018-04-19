@@ -161,9 +161,9 @@ M = train.train_data.size()[0]
 n_samples = 3
 
 learning_rate = 0.0001
-n_epochs = 120 # 50 # 100
+n_epochs = 20#20 # 50 # 100
 
-batch_size = 256 * 2
+batch_size = 256 * 2 * 2
 n_batches = M / float(batch_size)
 
 
@@ -187,10 +187,11 @@ def main():
         print("[iteration %04d] loss: %.4f" % (j + 1, loss / float(n_train_batches * batch_size)))
     #for name in pyro.get_param_store().get_all_param_names():
     #    print("[%s]: %.3f" % (name, pyro.param(name).data.numpy()))
-    datasets = {'RegularImages_0.0': [test.test_data, test.test_labels]}
+    datasets =  {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
     fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
-    fgsm_labels  = torch.from_numpy(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'))
+    fgsm_labels  = torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+    print(fgsm_labels)
     for file in fgsm:
         parts = file.split('_')
         key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
@@ -198,7 +199,7 @@ def main():
         datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
     jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
-    jsma_labels = torch.from_numpy(np.load('jsma/jsma_mnist_adv_y_10000.npy'))
+    jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
     for file in jsma:
         parts = file.split('_')
         key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
@@ -206,12 +207,12 @@ def main():
         datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
     print(datasets.keys())
     print('################################################################################')
+    accuracies = {}
     for key, value in datasets.iteritems():
         print(key)
         parts = key.split('_')
         adversary_type = parts[0]
         epsilon = parts[1]
-        print(epsilon)
         data = value
         X, y = data[0].view(-1, 28 * 28), data[1]
         x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
@@ -224,7 +225,8 @@ def main():
             pred = sampled_model(x_data)
             samples[:, i, :] = pred.data.cpu().numpy()
             _, out = torch.max(pred, 1)
-            acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(test.test_labels.size()[0])
+
+            acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(y_data.data.size()[0])
             accs.append(acc)
 
         variationRatio = []
@@ -250,9 +252,9 @@ def main():
 
         accs = np.array(accs)
         print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
+        accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
 
-
-    #print( "Loss: ", loss(y_preds, y_data.long()).data[0])
+    np.save('PyroBNN_accuracies', accuracies)
 
 
 if __name__ == '__main__':

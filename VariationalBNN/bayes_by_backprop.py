@@ -5,14 +5,12 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import glob
 import numpy as np
 
-from sklearn.datasets import fetch_mldata
-from sklearn.cross_validation import train_test_split
 from sklearn import preprocessing
-#from tensorflow.examples.tutorials.mnist import input_data
 from torchvision import datasets
-from torchviz import make_dot, make_dot_from_trace
+import Uncertainty
 
 
 def log_gaussian(x, mu, sigma):
@@ -113,28 +111,7 @@ def criterion(l_pw, l_qw, l_likelihood):
     # so this is...seemingly correct
     return ((1./n_batches) * (l_qw - l_pw) - l_likelihood).sum() / float(batch_size)
 
-class mnist:
-    def __init__(self):
-        #self.tf = input_data.read_data_sets("MNIST_data/",one_hot=False)
-        train = datasets.MNIST('./data', train=True)#, download=True)
-        test = datasets.MNIST('./dataTest', train=False)#,download=True)
-        testdata = test.test_data.view(-1, 28 * 28)
-        testlabel = test.test_labels
-        traindata = train.train_data.view(-1, 28 * 28)
-        trainlabel = train.train_labels
-        self.data = torch.cat((traindata, testdata))
-        self.target = torch.cat((trainlabel, testlabel))
-mnist = mnist()
-N = 5000
 
-data = np.float32(mnist.data[:]) / 255.
-idx = np.random.choice(data.shape[0], N)
-data = data[idx]
-target = np.int32(mnist.target[idx]).reshape(N, 1)
-
-train_idx, test_idx = train_test_split(np.array(range(N)), test_size=0.05)
-train_data, test_data = data[train_idx], data[test_idx]
-train_target, test_target = target[train_idx], target[test_idx]
 
 train_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(train_target))
 
@@ -161,6 +138,7 @@ n_train_batches = int(train_data.shape[0] / float(batch_size))
 
 for e in xrange(n_epochs):
     errs = []
+    totalloss = 0.0
     for b in range(n_train_batches):
         net.zero_grad()
         X = Variable(torch.Tensor(train_data[b * batch_size: (b+1) * batch_size]).cuda())
@@ -171,21 +149,88 @@ for e in xrange(n_epochs):
         #then we sum of thr esults in the criteron and do that business
         #F(D, theta)  = 1/n_batch (log_qw - log_pw) - logP(D | w), P(D|w) - softmax I believe...
         loss = criterion(log_pw, log_qw, log_likelihood)
-        make_dot(loss, params=dict(net.named_parameters()))
         errs.append(loss.data.cpu().numpy())
         loss.backward()
         optimizer.step()
+        totalloss += loss.data[0]
 
-    X = Variable(torch.Tensor(test_data).cuda(), volatile=True)
+    #X = Variable(torch.Tensor(test_data).cuda(), volatile=True)
+    #accs = []
+    #for t in range(0, 10):
+    #    pred = net(X, infer=True)
+    #    _, out = torch.max(pred, 1)
+    #    acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test_target.ravel())) / float(test_data.shape[0])
+    #    accs.append(acc)
+    #accs = np.array(accs)
+
+    print 'epoch', e, 'loss', totalloss / n_train_batches#, 'acc_mean', accs.mean(), 'acc_std', accs.std()
+
+
+######################################################################################################
+#test model
+outputs = 10
+datasets = {'RegularImages_0.0': [test.test_data, test.test_labels]}
+
+fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+fgsm_labels  = torch.from_numpy(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'))
+for file in fgsm:
+    parts = file.split('_')
+    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+
+    datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
+
+jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+jsma_labels = torch.from_numpy(np.load('jsma/jsma_mnist_adv_y_10000.npy'))
+for file in jsma:
+    parts = file.split('_')
+    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+
+    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+print(datasets.keys())
+print('################################################################################')
+for key, value in datasets.iteritems():
+    print(key)
+    parts = key.split('_')
+    adversary_type = parts[0]
+    epsilon = parts[1]
+    print(epsilon)
+    data = value
+    X, y = data[0].view(-1, 28 * 28), data[1]
+    x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
+    T = 100
+
     accs = []
-    for t in range(0, 10):
-        pred = net(X, infer=True)
+    samples = np.zeros((y_data.data.size()[0], T, outputs))
+    for i in range(T):
+        pred = net(x_data,infer=True)
+        samples[:, i, :] = pred.data.cpu().numpy()
         _, out = torch.max(pred, 1)
-        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(test_target.ravel())) / float(test_data.shape[0])
+        acc = np.count_nonzero(np.squeeze(out.data.cpu().numpy()) == np.int32(y_data.data.cpu().numpy().ravel())) / float(len(y_data.data.cpu().numpy()))
         accs.append(acc)
-    accs = np.array(accs)
 
-    print 'epoch', e, 'loss', np.mean(errs), 'acc_mean', accs.mean(), 'acc_std', accs.std()
+    variationRatio = []
+    mutualInformation = []
+    predictiveEntropy = []
+    predictions = []
+
+    for i in range(0, len(y_data)):
+        entry = samples[i, :, :]
+        variationRatio.append(Uncertainty.variation_ratio(entry))
+        mutualInformation.append(Uncertainty.mutual_information(entry))
+        predictiveEntropy.append(Uncertainty.predictive_entropy(entry))
+        predictions.append(np.max(entry.mean(axis=0), axis=0))
+
+
+    uncertainty={}
+    uncertainty['varation_ratio']= np.array(variationRatio)
+    uncertainty['predictive_entropy']= np.array(predictiveEntropy)
+    uncertainty['mutual_information']= np.array(mutualInformation)
+    predictions = np.array(predictions)
+
+    Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon))
+
+    accs = np.array(accs)
+    print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
 
 accs = []
 for y in range(0, 50):
