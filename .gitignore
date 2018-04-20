@@ -14,6 +14,7 @@ VariationalBNN/dataTestC
 VariationalBNN/data_cifar
 VariationalBNN/pbp_network*
 VariationalBNN/c/pbp_network
+VariationalBNN/gaussian.zip
 
 
 cleverhans_core/MNIST_data/

@@ -290,7 +290,11 @@ def main():
 
         accs = np.array(accs)
         print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
-        accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
+        #accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
+        accuracies[key] = {'mean': accs.mean(), 'std': accs.std(),  \
+                           'variationratio': [uncertainty['varation_ratio'].mean(), uncertainty['varation_ratio'].std()], \
+                           'predictiveEntropy': [uncertainty['predictive_entropy'].mean(), uncertainty['predictive_entropy'].std()], \
+                           'mutualInformation': [uncertainty['mutual_information'].mean(), uncertainty['mutual_information'].std()]}
 
     np.save('PyroBNN_accuracies_MNIST', accuracies)
 

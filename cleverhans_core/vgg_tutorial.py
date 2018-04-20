@@ -35,7 +35,7 @@ flags.DEFINE_integer('img_cols', 32, 'Input column dimension')
 flags.DEFINE_integer('nb_channels', 3, 'Nb of color channels in the input.')
 flags.DEFINE_integer('nb_filters', 64, 'Number of convolutional filter to use')
 flags.DEFINE_integer('nb_pool', 2, 'Size of pooling area for max pooling')
-flags.DEFINE_integer('source_samples', 100, 'Nb of test set examples to attack')
+flags.DEFINE_integer('source_samples', 1000, 'Nb of test set examples to attack')
 
 
 def data_cifar10():
@@ -163,7 +163,7 @@ def generate_images():
     """ JSMA """
     if args_attack == 'jsma' or args_attack == 'JSMA':
 
-        np.save("vgg_adv_y_100", Y_test[0: FLAGS.source_samples])
+        np.save("JSMA_vgg_adv_y_" + str(FLAGS.source_samples), Y_test[0: FLAGS.source_samples])
 
         result_dir = os.getcwd() + '/images/jsma/trial_single_adv_'
         print('Crafting ' + str(FLAGS.source_samples) + ' * ' +

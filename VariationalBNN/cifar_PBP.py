@@ -32,10 +32,8 @@ train.train_data = torch.from_numpy(np.load('data_cifar/training_vectors'))
 test.test_data = torch.from_numpy(np.load('data_cifar/validation_vectors'))
 # We create the train and test sets with 90% and 10% of the data
 
-X_train = train.train_data.view(-1, 28 * 28).numpy()
+X_train = train.train_data.numpy()
 y_train = train.train_labels.numpy()
-#X_test = test.test_data.view(-1, 28 * 28).numpy()
-#y_test = test.test_labels.numpy()
 
 print(X_train.shape)
 print(y_train.shape)
@@ -89,21 +87,21 @@ for file in fgsm:
 
     datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
-#jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+#jsma = glob.glob('jsma/jsma_cifar_adv_x_10000*')
 #jsma_labels = test.test_labels
-#torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
+#torch.from_numpy(np.argmax(np.load('jsma/jsma_cifar_adv_y_10000.npy'), axis=1))
 #for file in jsma:
 #    parts = file.split('_')
 #    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 #    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
 
 gaussian = glob.glob('gaussian/cifar_gaussian_adv_x*')
-gaussian_labels = test.test_labels 
+gaussian_labels = torch.from_numpy(np.argmax(np.load('gaussian/cifar_gaussian_adv_y.npy')[0:1000], axis=1))
 for file in gaussian:
     parts = file.split('_')
     key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
-    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+    datasets[key] = [torch.from_numpy(np.load(file)), gaussian_labels]
 
 
 
@@ -116,7 +114,7 @@ for key, value in datasets.iteritems():
     adversary_type = parts[0]
     epsilon = parts[1]
     data = value
-    X, y = data[0].view(-1, 28 * 28), data[1]
+    X, y = data[0], data[1]
     x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
     T = 50
 
@@ -152,7 +150,10 @@ for key, value in datasets.iteritems():
 
     accs = np.array(accs)
     print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
-    accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
+    accuracies[key] = {'mean': accs.mean(), 'std': accs.std(),  \
+                       'variationratio': [uncertainty['varation_ratio'].mean(), uncertainty['varation_ratio'].std()], \
+                       'predictiveEntropy': [uncertainty['predictive_entropy'].mean(), uncertainty['predictive_entropy'].std()], \
+                       'mutualInformation': [uncertainty['mutual_information'].mean(), uncertainty['mutual_information'].std()]}
 
 np.save('PBP_Accuracies_CIFAR', accuracies)
 
