@@ -14,7 +14,9 @@ from torchvision import datasets, transforms
 import time
 import Uncertainty
 import glob
-p = 512 #28 * 28
+#p = 512 #
+p = 28 * 28
+
 hidden = 1200
 outputs = 10
 
@@ -155,7 +157,8 @@ test_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform
 train.train_labels = torch.from_numpy(train_target)#.cuda()
 #test.test_labels = torch.from_numpy(test_target)
 '''
-
+#this is for the cifar
+'''
 from torch.utils.data.dataset import TensorDataset
 train = datasets.CIFAR10('./dataC', train=True, transform=transforms.Compose([transforms.ToTensor()]))#,download=True)
 train.train_labels = torch.Tensor(train.train_labels)
@@ -163,9 +166,9 @@ test = datasets.CIFAR10('./dataTestC', train=False, transform=transforms.Compose
 test.test_labels = torch.Tensor(test.test_labels)
 train.train_data = torch.from_numpy(np.load('data_cifar/training_vectors'))
 test.test_data = torch.from_numpy(np.load('data_cifar/validation_vectors'))
-
-#train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
-#test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
+'''
+train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
+test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
 
 train_target = train.train_labels.unsqueeze(1).numpy()
 #test_target = test.test_labels.unsqueeze(1).numpy()
@@ -191,7 +194,7 @@ n_batches = M / float(batch_size)
 optim = Adam({"lr": 0.0001})
 svi = SVI(model, guide, optim, loss="ELBO")
 n_train_batches = int(train.train_labels.size()[0] / float(batch_size))
-train = TensorDataset(train.train_data, train.train_labels)
+#train = TensorDataset(train.train_data, train.train_labels)
 train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
 
@@ -202,7 +205,7 @@ def main():
         loss = 0
         start = time.time()
         for data in train_loader:
-            data[0] = Variable(data[0].cuda())#.view(-1, 28 * 28).cuda())
+            data[0] = Variable(data[0].view(-1, 28 * 28).cuda())#.view(-1, 28 * 28).cuda())
             data[1] = Variable(data[1].long().cuda())
             loss += svi.step(data)
         print(time.time() - start)
@@ -212,10 +215,10 @@ def main():
     #    print("[%s]: %.3f" % (name, pyro.param(name).data.numpy()))
     datasets =  {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
-    #fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
-    #fgsm_labels  = torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
-    fgsm = glob.glob('fgsm/fgsm_cifar10_examples_x_10000_*') #glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
-    fgsm_labels = test.test_labels #torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+    fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+    fgsm_labels  = torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+    #fgsm = glob.glob('fgsm/fgsm_cifar10_examples_x_10000_*') #glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+    #fgsm_labels = test.test_labels #torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
     print(fgsm_labels)
     for file in fgsm:
         parts = file.split('_')
@@ -223,13 +226,18 @@ def main():
 
         datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
-    #jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
-    #jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
-    #for file in jsma:
-    #    parts = file.split('_')
-    #    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+    jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+    jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
+    for file in jsma:
+        parts = file.split('_')
+        key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+        datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+    gaussian = glob.glob('gaussian/mnist_gaussian_adv_x_*')
+    for file in gaussian:
+        parts = file.split('_')
+        key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+        datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
 
-    #    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
     print(datasets.keys())
     print('################################################################################')
     accuracies = {}
@@ -239,7 +247,7 @@ def main():
         adversary_type = parts[0]
         epsilon = parts[1]
         data = value
-        X, y = data[0], data[1]#.view(-1, 28 * 28), data[1]
+        X, y = data[0].view(-1, 28 * 28), data[1]#.view(-1, 28 * 28), data[1]
         x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
         T = 100
 
@@ -273,13 +281,15 @@ def main():
         uncertainty['mutual_information']= np.array(mutualInformation)
         predictions = np.array(predictions)
 
-        Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon), directory='Results_CIFAR10_PYRO')
+        Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon)
+                                     ,directory='Results_MNIST_PYRO')
+                                     #, directory='Results_CIFAR10_PYRO')
 
         accs = np.array(accs)
         print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
         accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
 
-    np.save('PyroBNN_accuracies_CIFAR', accuracies)
+    np.save('PyroBNN_accuracies_MNIST', accuracies)
 
 
 if __name__ == '__main__':

@@ -92,6 +92,16 @@ for file in jsma:
     key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
     datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+
+gaussian = glob.glob('gaussian/mnist_gaussian_adv_x*')
+for file in gaussian:
+    parts = file.split('_')
+    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+
+    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+
+
+
 print(datasets.keys())
 print('################################################################################')
 accuracies = {}
