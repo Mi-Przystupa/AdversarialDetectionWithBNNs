@@ -9,6 +9,9 @@ import sys
 sys.path.append('PBP_net/')
 import PBP_net
 from torchvision import datasets, transforms
+import torch
+import torch.nn as nn
+import torch.functional as F
 import glob
 
 np.random.seed(1)
@@ -37,12 +40,14 @@ print(y_test.shape)
 # zero mean and unit standard deviation in the trainig set.
 
 n_hidden_units = 50
-net = PBP_net.PBP_net(X_train, y_train,
-    [ n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 1)
+#net = PBP_net.load_PBP_net_from_file('pbp_network')
+#net = PBP_net.PBP_net(X_train, y_train,
+#    [n_hidden_units, n_hidden_units,  n_hidden_units, n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 40)
 
 # We make predictions for the test set
 #for i in range(0, 100):
-outputs = np.zeros((y_test.shape[0], 21))
+net.save_to_file('pbp_network')
+outputs = np.zeros((y_test.shape[0], 10))
 for j in range(0, 20):
     net.sample_weights()
     
@@ -51,19 +56,17 @@ for j in range(0, 20):
 
     labels = np.rint(m)
     #what is good programming?
-    labels[labels > 20.0] = 20
-    labels[labels < 0.0] = 0.0
-    labels.astype(int)
-    print(labels)
-    print(y_test)
-    print(np.sum(y_test == np.int32(labels)) / y_test.shape[0])
+    labels[labels > 9.0] = 9 
+    labels[labels < 0.0] = 0
+
     for k, l in enumerate(labels):
-        outputs[k,int(l)] += 1
+        outputs[k,int(l) ] += 1
 
 winners = np.argmax(outputs, axis=1)
 print(winners)
 
-print(np.sum(y_test == np.int32(winners)) / y_test.shape[0])
+print(np.count_nonzero(y_test == np.int32(winners)) / float(y_test.shape[0]))
+
 
 
 

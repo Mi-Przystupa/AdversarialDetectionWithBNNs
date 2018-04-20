@@ -8,11 +8,22 @@ VariationalBNN/data/*
 VariationalBNN/dataTest/*
 VariationalBNN/fgsm
 VariationalBNN/jsma
+VariationalBNN/PBP_net/build
+VariationalBNN/dataC
+VariationalBNN/dataTestC
+VariationalBNN/data_cifar
+VariationalBNN/pbp_network
+VariationalBNN/c/pbp_network
+
+
 cleverhans_core/MNIST_data/
 cleverhans_core/examples/*.npy
 cleverhans_core/images
 
+/.idea
+Results*
 
+*.npy
 *.pyc
 *.swp
 

@@ -52,14 +52,11 @@ class PBP_net:
 
         # We construct the network
 
-        n_units_per_layer = \
-            np.concatenate(([ X_train.shape[ 1 ] ], n_hidden, [ 1 ]))
-        self.pbp_instance = \
-            pbp.PBP(n_units_per_layer, self.mean_y_train, self.std_y_train)
+        self.net = pbp.construct_PBP_network(n_hidden, X_train.shape[ 1 ])
 
         # We iterate the learning process
 
-        self.pbp_instance.do_pbp(X_train, y_train_normalized, n_epochs)
+        pbp.train_PBP_network(self.net, X_train, y_train_normalized, n_epochs)
 
         # We are done!
 
@@ -82,7 +79,7 @@ class PBP_net:
 
         y_train_normalized = (y_train - self.mean_y_train) / self.std_y_train
 
-        self.pbp_instance.do_pbp(X_train, y_train_normalized, n_epochs)
+        pbp.train_PBP_network(self.net, X_train, y_train_normalized, n_epochs)
 
     def predict(self, X_test):
 
@@ -109,21 +106,26 @@ class PBP_net:
         # We compute the predictive mean and variance for the target variables
         # of the test data
 
-        m, v, v_noise = self.pbp_instance.get_predictive_mean_and_variance(X_test)
+        m, v, v_noise = pbp.predict_PBP_network(self.net, X_test)
+        m = m * self.std_y_train + self.mean_y_train
+        v = v * self.std_y_train**2
+        v_noise = v_noise * self.std_y_train**2
 
         # We are done!
 
-        return m, v, v_noise
+        return m, v, v_noise[ 0 ]
 
     def predict_deterministic(self, X_test):
 
         """
-            Function for making predictions with the Bayesian neural network.
+            Function for making deterministic predictions with the Bayesian
+            neural network using the weights sampled from the posterior
+            approximation.
 
             @param X_test   The matrix of features for the test data
             
     
-            @return o       The predictive value for the test target variables.
+            @return y_hat   The predictive mean for the test target variables.
 
         """
 
@@ -137,11 +139,12 @@ class PBP_net:
         # We compute the predictive mean and variance for the target variables
         # of the test data
 
-        o = self.pbp_instance.get_deterministic_output(X_test)
+        y_hat = pbp.predict_deterministic_PBP_network(self.net, X_test)
+        y_hat = y_hat * self.std_y_train + self.mean_y_train
 
         # We are done!
 
-        return o
+        return y_hat
 
     def sample_weights(self):
 
@@ -150,8 +153,8 @@ class PBP_net:
             to the weights distribution.
 
         """
- 
-        self.pbp_instance.sample_w()
+    
+        pbp.sample_weights_PBP_network(self.net)
 
     def save_to_file(self, filename):
 
@@ -162,6 +165,14 @@ class PBP_net:
             
         """
 
+        # We backup the current network
+        
+        old_net = self.net
+
+        # We map the network to a dictionary
+
+        self.net = pbp.map_to_dictionary_PBP_network(self.net)
+
         # We save the network to a file using pickle
 
         def save_object(obj, filename):
@@ -171,6 +182,10 @@ class PBP_net:
             dest.close()
 
         save_object(self, filename)
+
+        # We restore the current network
+
+        self.net = old_net
 
 def load_PBP_net_from_file(filename):
 
@@ -193,5 +208,7 @@ def load_PBP_net_from_file(filename):
     # We load the dictionary with the network parameters
 
     PBP_network = load_object(filename)
+    PBP_network.net = \
+        pbp.construct_from_dictionary_PBP_network(PBP_network.net)
 
     return PBP_network

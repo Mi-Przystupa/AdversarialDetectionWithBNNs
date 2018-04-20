@@ -36,7 +36,7 @@ def prediction_variance(predicted_probs):
 
 
 
-def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0.3):
+def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0.3, directory='Results'):
 
     max_predictions=predict_probs
     variation_ratios=uncertainty['varation_ratio']
@@ -58,7 +58,7 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('variation ratio uncertainty, %s,eps=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('variation ratio')
-    fig.savefig('Results/VariationRatio' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    fig.savefig(directory + '/VariationRatio' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
     #plt.show()
 
 
@@ -78,7 +78,7 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('mutual information, %s,eps=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('mutual information')
-    fig.savefig('Results/MutualInformation' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    fig.savefig(directory + '/MutualInformation' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
     #plt.show()
 
 
@@ -99,7 +99,7 @@ def plot_uncertainty(uncertainty,predict_probs,adversarial_type='fgsm',epsilon=0
     plt.title('predictive entropy, %s,eps=%f'%((adversarial_type,epsilon)))
     plt.xlabel('predicted probability')
     plt.ylabel('predictive entropy')
-    fig.savefig('Results/PredictedEntropy' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
+    fig.savefig(directory +'/PredictedEntropy' + '_' + adversarial_type + '_' + str(epsilon) + '.png', format='png')
     #plt.show()
 
 
