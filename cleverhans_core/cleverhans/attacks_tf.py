@@ -14,6 +14,99 @@ from . import utils
 
 _logger = utils.create_logger("cleverhans.attacks.tf")
 
+def jsma_old(sess, x, predictions, grads, sample, target, num_classes, theta, gamma,
+            increase, clip_min, clip_max):
+    """
+    TensorFlow implementation of the JSMA (see https://arxiv.org/abs/1511.07528
+    for details about the algorithm design choices).
+    :param sess: TF session
+    :param x: the input placeholder
+    :param predictions: the model's symbolic output (linear output,
+        pre-softmax)
+    :param sample: numpy array with sample input
+    :param target: target class for sample input
+    :param theta: delta for each feature adjustment
+    :param gamma: a float between 0 - 1 indicating the maximum distortion
+        percentage
+    :param increase: boolean; true if we are increasing pixels, false otherwise
+    :param clip_min: optional parameter that can be used to set a minimum
+                    value for components of the example returned
+    :param clip_max: optional parameter that can be used to set a maximum
+                    value for components of the example returned
+    :return: an adversarial sample
+    """
+
+    # Copy the source sample and define the maximum number of features
+    # (i.e. the maximum number of iterations) that we may perturb
+    adv_x = copy.copy(sample)
+    # count the number of features. For MNIST, 1x28x28 = 784; for
+    # CIFAR, 3x32x32 = 3072; etc.
+    nb_features = np.product(adv_x.shape[1:])
+    # reshape sample for sake of standardization
+    original_shape = adv_x.shape
+    adv_x = np.reshape(adv_x, (1, nb_features))
+    # compute maximum number of iterations
+    max_iters = np.floor(nb_features * gamma / 2)
+    print('Maximum number of iterations: {0}'.format(max_iters))
+
+    # Compute our initial search domain. We optimize the initial search domain
+    # by removing all features that are already at their maximum values (if
+    # increasing input features---otherwise, at their minimum value).
+    if increase:
+        search_domain = set([i for i in xrange(nb_features)
+                             if adv_x[0, i] < clip_max])
+    else:
+        search_domain = set([i for i in xrange(nb_features)
+                             if adv_x[0, i] > clip_min])
+
+    # Initialize the loop variables
+    iteration = 0
+    adv_x_original_shape = np.reshape(adv_x, original_shape)
+    current = utils_tf.model_argmax(sess, x, predictions, adv_x_original_shape)
+
+    # Repeat this main loop until we have achieved misclassification
+    while (current != target and iteration < max_iters and
+           len(search_domain) > 1):
+        # Reshape the adversarial example
+        adv_x_original_shape = np.reshape(adv_x, original_shape)
+
+        # Compute the Jacobian components
+        grads_target, grads_others = jacobian(sess, x, grads, target,
+                                              adv_x_original_shape,
+                                              nb_features, num_classes)
+
+        # Compute the saliency map for each of our target classes
+        # and return the two best candidate features for perturbation
+        i, j, search_domain = saliency_map(
+            grads_target, grads_others, search_domain, increase)
+
+        # Apply the perturbation to the two input features selected previously
+        adv_x = apply_perturbations(
+            i, j, adv_x, increase, theta, clip_min, clip_max)
+
+        # Update our current prediction by querying the model
+        current = utils_tf.model_argmax(sess, x, predictions,
+                                        adv_x_original_shape)
+
+        # Update loop variables
+        iteration = iteration + 1
+
+        # This process may take a while, so outputting progress regularly
+        if iteration % 5 == 0:
+            msg = 'Current iteration: {0} - Current Prediction: {1}'
+            print(msg.format(iteration, current))
+
+    # Compute the ratio of pixels perturbed by the algorithm
+    percent_perturbed = float(iteration * 2) / nb_features
+
+    # Report success when the adversarial example is misclassified in the
+    # target class
+    if current == target:
+        print('Successful')
+        return np.reshape(adv_x, original_shape), 1, percent_perturbed
+    else:
+        print('Unsuccesful')
+        return np.reshape(adv_x, original_shape), 0, percent_perturbed
 
 def fgsm_old(x, predictions, eps, clip_min=None, clip_max=None):
     """

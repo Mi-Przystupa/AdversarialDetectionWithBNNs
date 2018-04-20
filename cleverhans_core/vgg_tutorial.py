@@ -16,8 +16,7 @@ from keras import backend
 from keras.datasets import cifar10
 from keras.utils import np_utils
 
-from cleverhans.attacks_tf import fgsm_old
-from cleverhans.attacks import SaliencyMapMethod
+from cleverhans.attacks_tf import fgsm_old, jsma_old
 from cleverhans.attacks_tf import jacobian_graph
 from cleverhans.utils import other_classes, pair_visual, grid_visual
 from cleverhans.utils_tf import model_train, model_eval, batch_eval
@@ -36,7 +35,7 @@ flags.DEFINE_integer('img_cols', 32, 'Input column dimension')
 flags.DEFINE_integer('nb_channels', 3, 'Nb of color channels in the input.')
 flags.DEFINE_integer('nb_filters', 64, 'Number of convolutional filter to use')
 flags.DEFINE_integer('nb_pool', 2, 'Size of pooling area for max pooling')
-flags.DEFINE_integer('source_samples', 50000, 'Nb of test set examples to attack')
+flags.DEFINE_integer('source_samples', 100, 'Nb of test set examples to attack')
 
 
 def data_cifar10():
@@ -106,7 +105,7 @@ def generate_images():
     # Load model
     args_load = 'cifar10vgg.h5'
     args_pool = 0.05
-    args_attack = 'fgsm'
+    args_attack = 'jsma'
 
     print "==> loading vgg model"
     model = vggbn(top=True, pool=args_pool)
@@ -164,7 +163,9 @@ def generate_images():
     """ JSMA """
     if args_attack == 'jsma' or args_attack == 'JSMA':
 
-        result_dir = os.getcwd() + '/images/jsma/trial_single_adv'
+        np.save("vgg_adv_y_100", Y_test[0: FLAGS.source_samples])
+
+        result_dir = os.getcwd() + '/images/jsma/trial_single_adv_'
         print('Crafting ' + str(FLAGS.source_samples) + ' * ' +
               str(FLAGS.nb_classes - 1) + ' adversarial examples')
 
@@ -186,92 +187,94 @@ def generate_images():
         grid_viz_data = np.zeros(grid_shape, dtype='f')
         i_saved = 0
         n_image = 0
-        # Loop over the samples we want to perturb into adversarial examples
-        print "==> saving images to {}".format(result_dir + model_name)
-        for sample_ind in xrange(7166, FLAGS.source_samples):
-            # We want to find an adversarial example for each possible target class
-            current_class = int(np.argmax(Y_train[sample_ind]))
-            target_classes = other_classes(FLAGS.nb_classes, current_class)
-            # For the grid visualization, keep original images along the diagonal
-            grid_viz_data[current_class, current_class, :, :, :] = np.reshape(
-                X_train[sample_ind:(sample_ind + 1)],
-                (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
 
-            # Loop over all target classes
-            adversarials = []
-            for idx, target in enumerate(target_classes):
-                print "image {}".format(sample_ind)
+	gammas = [0.01, 0.05, 0.1, 0.2, 0.3]
 
-                # here we hold all successful adversarials for this iteration
-                # since we dont want 500k images, we will uniformly sample an image to save after each target
+        for gamma in gammas:
 
-                print('--------------------------------------')
-                print('Creating adv. example for target class ' + str(target))
+		model_name = "vgg_jsma_" + str(gamma)
 
-                # This call runs the Jacobian-based saliency map approach
-                adv_x, res, percent_perturb = SaliencyMapMethod(sess, x, predictions, grads,
-                                                                X_train[sample_ind:
+        	# Loop over the samples we want to perturb into adversarial examples
+	        print "==> saving images to {}".format(result_dir + model_name)
+		for sample_ind in xrange(0, FLAGS.source_samples):
+            	
+        		# We want to find an adversarial example for each possible target class
+           		current_class = int(np.argmax(Y_test[sample_ind]))
+	        	target_classes = other_classes(FLAGS.nb_classes, current_class)
+	
+	    	        # For the grid visualization, keep original images along the diagonal
+	     		grid_viz_data[current_class, current_class, :, :, :] = np.reshape(
+	                	X_test[sample_ind:(sample_ind + 1)],
+                		(FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
+
+		        # Loop over all target classes
+    		        # pdb.set_trace()
+
+        	        for target in np.random.permutation(target_classes):
+                
+            	    		print "image {}".format(sample_ind)
+
+	                	# here we hold all successful adversarials for this iteration
+			        # since we dont want 500k images, we will uniformly sample an image to save after each target
+
+        	        	print('--------------------------------------')
+	            	    	print('Creating adv. example for target class ' + str(target))
+
+		                # This call runs the Jacobian-based saliency map approach
+		                adv_x, res, percent_perturb = jsma_old(sess, x, predictions, grads,
+                                                                X_test[sample_ind:
                                                                         (sample_ind + 1)],
-                                                                target, theta=1, gamma=0.1,
-                                                                increase=True, back='tf',
+                                                                target, num_classes=FLAGS.nb_classes, theta=1, gamma=gamma,
+                                                                increase=True,
                                                                 clip_min=0, clip_max=1)
-                # Display the original and adversarial images side-by-side
-                adversarial = np.reshape(adv_x, (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
-                original = np.reshape(X_train[sample_ind:(sample_ind + 1)],
-                                      (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
+			        # Display the original and adversarial images side-by-side
+	    	            	adversarial = np.reshape(adv_x, (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
+			        original = np.reshape(X_test[sample_ind:(sample_ind + 1)],
+		                              (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
 
-                if FLAGS.viz_enabled:
+			        if FLAGS.viz_enabled:
 
-                    if 'figure' not in vars():
-                        figure = pair_visual(original, adversarial)
-                    else:
-                        figure = pair_visual(original, adversarial, figure)
+					if 'figure' not in vars():
+						figure = pair_visual(original, adversarial)
+					else:
+						figure = pair_visual(original, adversarial, figure)
 
-                if not os.path.exists(result_dir + model_name):
-                    os.makedirs(result_dir + model_name)
+			        if not os.path.exists(result_dir + model_name):
+			            os.makedirs(result_dir + model_name)
 
-                if res == 1:
-                    adversarials.append(adversarial)
+			        if res == 1:
+		            
+			            scipy.misc.imsave(result_dir + model_name + im_base +
+		                            str(sample_ind) + '.png', adversarial)
 
-                if idx == FLAGS.nb_classes - 2:
+			            i_saved += 1
+			            print "==> images saved: {}".format(i_saved)
 
-                    try:
-                        if len(adversarials) == 1:
-                            idx_uniform = 0
-                        else:
-                            idx_uniform = np.random.randint(0, len(adversarials) - 1)
-                        print idx_uniform
-                        scipy.misc.imsave(result_dir + model_name + im_base +
-                                          str(sample_ind) + '.png', adversarials[idx_uniform])
-                        i_saved += 1
-                        print "==> images saved: {}".format(i_saved)
+			            # Add our adversarial example to our grid data
+			            grid_viz_data[target, current_class, :, :, :] = np.reshape(
+	    	                    adv_x, (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
 
-                    except:
+			            # Update the arrays for later analysis
+			            results[target, sample_ind] = res
+			            perturbations[target, sample_ind] = percent_perturb
 
-                        print "No adversarials generated"
+			            break
 
-                # Add our adversarial example to our grid data
-                grid_viz_data[target, current_class, :, :, :] = np.reshape(
-                    adv_x, (FLAGS.img_rows, FLAGS.img_cols, FLAGS.nb_channels))
+	    	        n_image += 1
 
-                # Update the arrays for later analysis
-                results[target, sample_ind] = res
-                perturbations[target, sample_ind] = percent_perturb
+	        # Compute the number of adversarial examples that were successfuly found
+	        nb_targets_tried = ((FLAGS.nb_classes - 1) * FLAGS.source_samples)
+	        succ_rate = float(np.sum(results)) / nb_targets_tried
+	        print('Avg. rate of successful adv. examples {0:.2f}'.format(succ_rate))
 
-            n_image += 1
-        # Compute the number of adversarial examples that were successfuly found
-        nb_targets_tried = ((FLAGS.nb_classes - 1) * FLAGS.source_samples)
-        succ_rate = float(np.sum(results)) / nb_targets_tried
-        print('Avg. rate of successful adv. examples {0:.2f}'.format(succ_rate))
+	        # Compute the average distortion introduced by the algorithm
+	        percent_perturbed = np.mean(perturbations)
+	        print('Avg. rate of perturbed features {0:.2f}'.format(percent_perturbed))
 
-        # Compute the average distortion introduced by the algorithm
-        percent_perturbed = np.mean(perturbations)
-        print('Avg. rate of perturbed features {0:.2f}'.format(percent_perturbed))
-
-        # Compute the average distortion introduced for successful samples only
-        percent_perturb_succ = np.mean(perturbations * (results == 1))
-        print('Avg. rate of perturbed features for successful '
-              'adversarial examples {0:.2f}'.format(percent_perturb_succ))
+	        # Compute the average distortion introduced for successful samples only
+	        percent_perturb_succ = np.mean(perturbations * (results == 1))
+	        print('Avg. rate of perturbed features for successful '
+    	          'adversarial examples {0:.2f}'.format(percent_perturb_succ))
 
         # Close TF session
         sess.close()
