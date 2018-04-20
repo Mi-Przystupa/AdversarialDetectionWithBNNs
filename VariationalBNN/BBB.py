@@ -129,6 +129,9 @@ train_target, test_target = target[train_idx], target[test_idx]
 
 train_target = np.float32(preprocessing.OneHotEncoder(sparse=False).fit_transform(train_target))
 '''
+
+#cifar changes
+'''
 from torch.utils.data.dataset import TensorDataset
 train = datasets.CIFAR10('./dataC', train=True, transform=transforms.Compose([transforms.ToTensor()]))#,download=True)
 train.train_labels = torch.Tensor(train.train_labels)
@@ -136,9 +139,9 @@ test = datasets.CIFAR10('./dataTestC', train=False, transform=transforms.Compose
 test.test_labels = torch.Tensor(test.test_labels)
 train.train_data = torch.from_numpy(np.load('data_cifar/training_vectors'))
 test.test_data = torch.from_numpy(np.load('data_cifar/validation_vectors'))
-
-#train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
-#test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
+'''
+train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]))
+test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]))
 
 train_target = train.train_labels.unsqueeze(1).numpy()
 #test_target = test.test_labels.unsqueeze(1).numpy()
@@ -150,12 +153,13 @@ train.train_labels = torch.from_numpy(train_target)
 #test.test_labels = torch.from_numpy(test_target)
 
 
-n_input = 512 # 28 * 28
+#n_input = 512 # 28 * 28
+n_input = 28 * 28
 M = train.train_data.size()[0]
 sigma_prior = float(np.exp(-3))
 n_samples = 3
 learning_rate = 0.0001
-n_epochs = 50 # 50 # 100
+n_epochs = 100 # 50 # 100
 
 # Initialize network
 net = MLP(n_input, sigma_prior)
@@ -171,7 +175,7 @@ optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 n_train_batches = int(train.train_labels.size()[0] / float(batch_size))
 
-train = TensorDataset(train.train_data, train.train_labels)
+#train = TensorDataset(train.train_data, train.train_labels)
 train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True,
         )
 
@@ -185,7 +189,8 @@ for e in xrange(n_epochs):
     for b in train_loader:
 
         net.zero_grad()
-        X = Variable(b[0].float().cuda())#.view(-1, 28 * 28).float().cuda())
+        #X = Variable(b[0].float().cuda())#.view(-1, 28 * 28).float().cuda())
+        X = Variable(b[0].view(-1, 28 * 28).float().cuda())
         y = Variable(b[1].cuda())
         #technically you're supposed to get n number of samples for each update...
         #so secretly there should be aloop around this where we calc the forward pas smultipel times
@@ -218,21 +223,31 @@ for e in xrange(n_epochs):
 outputs = 10
 datasets = {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
-fgsm = glob.glob('fgsm/fgsm_cifar10_examples_x_10000_*') #glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
-fgsm_labels = test.test_labels #torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+#fgsm = glob.glob('fgsm/fgsm_cifar10_examples_x_10000_*') #glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+#fgsm_labels = test.test_labels #torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
+fgsm_labels = torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
 for file in fgsm:
     parts = file.split('_')
     key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
     datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
-#jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
-#jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
-#for file in jsma:
-#    parts = file.split('_')
-#    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
-#
-#    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
+for file in jsma:
+    parts = file.split('_')
+    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+
+gaussian = glob.glob('gaussian/mnist_gaussian_adv_x_*')
+gaussian_labels = torch.from_numpy(np.argmax(np.load('gaussian/mnist_gaussian_adv_y.npy'), axis=1))
+for file in gaussian:
+    parts = file.split('_')
+    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+
+
 print(datasets.keys())
 print('################################################################################')
 accuracies = {}
@@ -242,7 +257,7 @@ for key, value in datasets.iteritems():
     adversary_type = parts[0]
     epsilon = parts[1]
     data = value
-    X, y = data[0], data[1]#.view(-1, 28 * 28), data[1]
+    X, y = data[0].view(-1, 28 * 28), data[1]#.view(-1, 28 * 28), data[1]
     x_data, y_data = Variable(X.float().cuda()), Variable(y.cuda())
     T = 100
 
@@ -274,12 +289,12 @@ for key, value in datasets.iteritems():
     uncertainty['mutual_information']= np.array(mutualInformation)
     predictions = np.array(predictions)
 
-    Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon),
-                                 directory='Results_CIFAR10_BBB')
+    Uncertainty.plot_uncertainty(uncertainty, predictions, adversarial_type=adversary_type,epsilon=float(epsilon),
+                                 directory='Results_MNIST_BBB')
 
     accs = np.array(accs)
     print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
     accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
 
-np.save('BBB_Accuracies', accuracies)
+np.save('BBB_Accuracies_MNIST', accuracies)
 

@@ -185,9 +185,9 @@ M = train.train_data.size()[0]
 n_samples = 3
 
 learning_rate = 0.0001
-n_epochs = 120#20 # 50 # 100
+n_epochs = 150#20 # 50 # 100
 
-batch_size = 256 * 2 * 2
+batch_size = 256 * 2
 n_batches = M / float(batch_size)
 
 
@@ -201,6 +201,7 @@ train_loader = utils.data.DataLoader(train, batch_size=batch_size, shuffle=True,
 
 def main():
     pyro.clear_param_store()
+    #pyro.get_param_store().load('Pyro_model')
     for j in range(n_epochs):
         loss = 0
         start = time.time()
@@ -213,6 +214,7 @@ def main():
         print("[iteration %04d] loss: %.4f" % (j + 1, loss / float(n_train_batches * batch_size)))
     #for name in pyro.get_param_store().get_all_param_names():
     #    print("[%s]: %.3f" % (name, pyro.param(name).data.numpy()))
+    pyro.get_param_store().save('Pyro_model')
     datasets =  {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
     fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
@@ -233,10 +235,11 @@ def main():
         key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
         datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
     gaussian = glob.glob('gaussian/mnist_gaussian_adv_x_*')
+    gaussian_labels = torch.from_numpy(np.argmax(np.load('gaussian/mnist_gaussian_adv_y.npy'), axis=1))
     for file in gaussian:
         parts = file.split('_')
         key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
-        datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
+        datasets[key] = [torch.from_numpy(np.load(file)), gaussian_labels]
 
     print(datasets.keys())
     print('################################################################################')

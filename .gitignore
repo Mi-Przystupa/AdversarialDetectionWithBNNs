@@ -12,7 +12,7 @@ VariationalBNN/PBP_net/build
 VariationalBNN/dataC
 VariationalBNN/dataTestC
 VariationalBNN/data_cifar
-VariationalBNN/pbp_network
+VariationalBNN/pbp_network*
 VariationalBNN/c/pbp_network
 
 

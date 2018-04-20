@@ -23,9 +23,13 @@ np.random.seed(1)
 
 
 # We obtain the features and the targets
-train = datasets.MNIST('./data', train=True, transform=transforms.Compose([transforms.ToTensor()]), download=False)
-test = datasets.MNIST('./dataTest', train=False, transform=transforms.Compose([transforms.ToTensor()]), download=False)
-
+from torch.utils.data.dataset import TensorDataset
+train = datasets.CIFAR10('./dataC', train=True, transform=transforms.Compose([transforms.ToTensor()]))#,download=True)
+train.train_labels = torch.Tensor(train.train_labels)
+test = datasets.CIFAR10('./dataTestC', train=False, transform=transforms.Compose([transforms.ToTensor()]))#,download=True)
+test.test_labels = torch.Tensor(test.test_labels)
+train.train_data = torch.from_numpy(np.load('data_cifar/training_vectors'))
+test.test_data = torch.from_numpy(np.load('data_cifar/validation_vectors'))
 # We create the train and test sets with 90% and 10% of the data
 
 X_train = train.train_data.view(-1, 28 * 28).numpy()
@@ -43,13 +47,13 @@ print(y_train.shape)
 # zero mean and unit standard deviation in the trainig set.
 
 n_hidden_units = 50
-net = PBP_net.load_PBP_net_from_file('pbp_network')
-#net = PBP_net.PBP_net(X_train, y_train,
-#    [n_hidden_units, n_hidden_units,  n_hidden_units, n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 50)
+#net = PBP_net.load_PBP_net_from_file('pbp_network_cifar')
+net = PBP_net.PBP_net(X_train, y_train,
+    [n_hidden_units, n_hidden_units,  n_hidden_units, n_hidden_units, n_hidden_units ], normalize = True, n_epochs = 50)
 
 # We make predictions for the test set
 #for i in range(0, 100):
-net.save_to_file('pbp_network')
+net.save_to_file('pbp_network_cifar')
 
 def createProbabilityOfClasses(X_test, samples=10):
     outputs = np.zeros((X_test.shape[0], 10))
@@ -77,25 +81,24 @@ def createProbabilityOfClasses(X_test, samples=10):
 outputs = 10
 datasets = {'RegularImages_0.0': [test.test_data, test.test_labels]}
 
-fgsm = glob.glob('fgsm/fgsm_mnist_adv_x_1000_*')
-fgsm_labels = torch.from_numpy(np.argmax(np.load('fgsm/fgsm_mnist_adv_y_1000.npy'), axis=1))
+fgsm = glob.glob('fgsm/fgsm_cifar10_examples_x_10000_*')
+fgsm_labels = test.test_labels 
 for file in fgsm:
     parts = file.split('_')
     key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
 
     datasets[key] = [torch.from_numpy(np.load(file)), fgsm_labels]
 
-jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
-jsma_labels = torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
-for file in jsma:
-    parts = file.split('_')
-    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+#jsma = glob.glob('jsma/jsma_mnist_adv_x_10000*')
+#jsma_labels = test.test_labels
+#torch.from_numpy(np.argmax(np.load('jsma/jsma_mnist_adv_y_10000.npy'), axis=1))
+#for file in jsma:
+#    parts = file.split('_')
+#    key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
+#    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
 
-    datasets[key] = [torch.from_numpy(np.load(file)), jsma_labels]
-
-gaussian = glob.glob('gaussian/mnist_gaussian_adv_x*')
-gaussian_labels = torch.from_numpy(np.argmax(np.load('gaussian/mnist_gaussian_adv_y.npy'), axis=1))
-
+gaussian = glob.glob('gaussian/cifar_gaussian_adv_x*')
+gaussian_labels = test.test_labels 
 for file in gaussian:
     parts = file.split('_')
     key = parts[0].split('/')[0] + '_' + parts[-1].split('.npy')[0]
@@ -145,11 +148,11 @@ for key, value in datasets.iteritems():
     uncertainty['mutual_information']= np.array(mutualInformation)
     predictions = np.array(predictions)
 
-    Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon), directory='Results_MNIST_PBP')
+    Uncertainty.plot_uncertainty(uncertainty,predictions,adversarial_type=adversary_type,epsilon=float(epsilon), directory='Results_CIFAR_PBP')
 
     accs = np.array(accs)
     print('Accuracy mean: {}, Accuracy std: {}'.format(accs.mean(), accs.std()))
     accuracies[key] = {'mean': accs.mean(), 'std': accs.std()}
 
-np.save('PBP_Accuracies_MNIST', accuracies)
+np.save('PBP_Accuracies_CIFAR', accuracies)
 
