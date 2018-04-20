@@ -17,7 +17,7 @@ VariationalBNN/c/pbp_network
 
 
 cleverhans_core/MNIST_data/
-cleverhans_core/examples/*.npy
+cleverhans_core/examples/*
 cleverhans_core/images
 
 /.idea
