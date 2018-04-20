@@ -11,9 +11,11 @@ We have FGSM epsilon values in the range [0.01, 0.03, 0.07, 0.1, 0.2, 0.3].
 FGSM on MNIST: http://www.cs.ubc.ca/~cfung1/adv_images/mnist_adv_examples.zip  
 JSMA on MNIST: http://www.cs.ubc.ca/~cfung1/adv_images/jsma_adv_examples_10000.zip  
 
+CIFAR-10 labels: http://www.cs.ubc.ca/~cfung1/fgsm/vgg_adv_y_10000.npy  
 FGSM on CIFAR-10: http://www.cs.ubc.ca/~cfung1/fgsm/vgg_fgsm_0.1/im_0.png  
 This is just a pattern with the link at vgg_fgsm_EPSILON and im_INDEX.png  
 
-CIFAR-10 labels: http://www.cs.ubc.ca/~cfung1/fgsm/vgg_adv_y_10000.npy  
+CIFAR-10 JSMA: http://www.cs.ubc.ca/~cfung1/jsma/trial_single_adv_vgg_jsma_0.01/im_0.png  
+This is just a pattern with the link at trial_single_adv_vgg_jsma_GAMMA and im_INDEX.png  
 
 Gaussian Noise: http://www.cs.ubc.ca/~cfung1/gaussian/gaussian_examples.zip  
