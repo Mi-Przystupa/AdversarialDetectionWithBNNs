@@ -16,3 +16,4 @@ This is just a pattern with the link at vgg_fgsm_EPSILON and im_INDEX.png
 
 CIFAR-10 labels: http://www.cs.ubc.ca/~cfung1/fgsm/vgg_adv_y_10000.npy  
 
+Gaussian Noise: http://www.cs.ubc.ca/~cfung1/gaussian/gaussian_examples.zip  
