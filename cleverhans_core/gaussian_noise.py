@@ -22,7 +22,7 @@ def main():
     label_smooth = .1
     Y_train = Y_train.clip(label_smooth / 9., 1. - label_smooth)
 
-    sigmas = np.arange(0.05, 0.55, 0.05)
+    sigmas = [0.05, 0.1, 0.15, 0.2, 0.25]
 
     for sigma in sigmas:
 

@@ -49,7 +49,7 @@ def main():
 
     X_train, Y_train, X_test, Y_test = data_cifar10()
 
-    sigmas = np.arange(0.05, 0.55, 0.05)
+    sigmas = [0.05, 0.1, 0.15, 0.2, 0.25]
 
     for sigma in sigmas:
 
